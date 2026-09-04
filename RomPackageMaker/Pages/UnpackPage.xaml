@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="RomPackageMaker.Pages.UnpackPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:RomPackageMaker.Pages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    AllowDrop="True"
+    mc:Ignorable="d">
+
+    <Grid Padding="24,16,24,16" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="解包 ROM" />
+
+        <StackPanel
+            Grid.Row="1"
+            MaxWidth="640"
+            HorizontalAlignment="Left"
+            Orientation="Vertical"
+            Spacing="12">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBox
+                    x:Name="SourcePathBox"
+                    Width="480"
+                    Header="ROM 文件（刷机包 zip / system.img / boot.img / super.img）"
+                    IsReadOnly="True"
+                    PlaceholderText="选择或拖入 ROM 文件" />
+                <Button
+                    x:Name="BrowseSourceButton"
+                    VerticalAlignment="Bottom"
+                    Click="BrowseSourceButton_Click"
+                    Content="浏览..." />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBox
+                    x:Name="WorkspaceBox"
+                    Width="480"
+                    Header="工作目录（解包输出位置）"
+                    IsReadOnly="True"
+                    PlaceholderText="选择解包工作目录" />
+                <Button
+                    x:Name="BrowseWorkspaceButton"
+                    VerticalAlignment="Bottom"
+                    Click="BrowseWorkspaceButton_Click"
+                    Content="浏览..." />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button
+                    x:Name="UnpackButton"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Click="UnpackButton_Click"
+                    Content="开始解包" />
+                <Button
+                    x:Name="CancelButton"
+                    Click="CancelButton_Click"
+                    Content="取消"
+                    Visibility="Collapsed" />
+                <ProgressRing
+                    x:Name="BusyIndicator"
+                    Width="24"
+                    Height="24"
+                    Visibility="Collapsed" />
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel
+            Grid.Row="2"
+            MaxWidth="640"
+            HorizontalAlignment="Left"
+            Spacing="4">
+            <TextBlock x:Name="StageText" Style="{StaticResource CaptionTextBlockStyle}" Text="就绪" />
+            <ProgressBar x:Name="UnpackProgress" Maximum="100" Value="0" />
+        </StackPanel>
+
+        <Border
+            Grid.Row="3"
+            MaxWidth="960"
+            Padding="12"
+            HorizontalAlignment="Left"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="日志" />
+                    <Button x:Name="ClearLogBtn" Click="ClearLogBtn_Click" Content="清空" />
+                    <Button x:Name="CopyLogBtn" Click="CopyLogBtn_Click" Content="复制" />
+                </StackPanel>
+                <ScrollViewer Grid.Row="1" MaxHeight="320">
+                    <TextBox
+                        x:Name="LogText"
+                        IsReadOnly="True"
+                        TextWrapping="Wrap"
+                        Text="等待任务..."
+                        BorderThickness="0"
+                        Background="Transparent" />
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

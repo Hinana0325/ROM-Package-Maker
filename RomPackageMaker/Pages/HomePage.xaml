@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="RomPackageMaker.Pages.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:RomPackageMaker.Pages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer Padding="24,16,24,16">
+        <StackPanel MaxWidth="960" Spacing="20">
+            <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="ROM 制作工具" />
+            <TextBlock
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="Android ROM 解包、定制与打包的本地化工作台。内置 ext4 / sparse / boot.img / super 动态分区解析与重打包引擎，支持刷机包 zip 签名。" />
+
+            <TextBlock Margin="0,8,0,0" Style="{StaticResource SubtitleTextBlockStyle}" Text="工作流程" />
+
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Border
+                    Width="280"
+                    Padding="16"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="6">
+                        <FontIcon FontSize="20" Glyph="&#xE8C8;" />
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="1. 解包" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap"
+                            Text="载入刷机包 zip 或分区镜像，解出可编辑的工作目录。" />
+                    </StackPanel>
+                </Border>
+                <Border
+                    Width="280"
+                    Padding="16"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="6">
+                        <FontIcon FontSize="20" Glyph="&#xE70F;" />
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="2. 定制" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap"
+                            Text="在工作目录中精简预装、修改 prop、集成 ROOT（规划中）。" />
+                    </StackPanel>
+                </Border>
+                <Border
+                    Width="280"
+                    Padding="16"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="6">
+                        <FontIcon FontSize="20" Glyph="&#xE8EF;" />
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="3. 打包" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap"
+                            Text="重新生成分区镜像并输出可刷写的签名 zip 刷机包。" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

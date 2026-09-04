@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="RomPackageMaker.Pages.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:RomPackageMaker.Pages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer Padding="24,16,24,16">
+        <StackPanel MaxWidth="720" HorizontalAlignment="Left" Spacing="24">
+            <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="设置" />
+
+            <!-- 外观 -->
+            <Border
+                Padding="16"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="12">
+                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="外观" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock VerticalAlignment="Center" Text="主题" Width="80" />
+                        <ComboBox x:Name="ThemeCombo" Width="200" SelectionChanged="ThemeCombo_SelectionChanged">
+                            <ComboBoxItem Content="跟随系统" Tag="system" />
+                            <ComboBoxItem Content="浅色" Tag="light" />
+                            <ComboBoxItem Content="深色" Tag="dark" />
+                        </ComboBox>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 工作目录 -->
+            <Border
+                Padding="16"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="12">
+                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="默认路径" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock VerticalAlignment="Center" Text="工作目录" Width="80" />
+                        <TextBox x:Name="WorkspaceBox" Width="420" IsReadOnly="True" PlaceholderText="未设置（每次手动选择）" />
+                        <Button Click="BrowseWorkspace_Click" Content="浏览..." />
+                        <Button Click="ClearWorkspace_Click" Content="清除" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock VerticalAlignment="Center" Text="输出目录" Width="80" />
+                        <TextBox x:Name="OutputBox" Width="420" IsReadOnly="True" PlaceholderText="未设置" />
+                        <Button Click="BrowseOutput_Click" Content="浏览..." />
+                        <Button Click="ClearOutput_Click" Content="清除" />
+                    </StackPanel>
+                    <CheckBox x:Name="OpenOutputCheck" Content="打包完成后自动打开输出目录" />
+                </StackPanel>
+            </Border>
+
+            <!-- 签名 -->
+            <Border
+                Padding="16"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="12">
+                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="刷机包签名" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap"
+                        Text="留空则使用内置测试证书签名。生产环境请配置自己的签名密钥。" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock VerticalAlignment="Center" Text="私钥 (.pk8/.pfx)" Width="100" />
+                        <TextBox x:Name="KeyBox" Width="400" IsReadOnly="True" PlaceholderText="未设置（使用测试证书）" />
+                        <Button Click="BrowseKey_Click" Content="浏览..." />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock VerticalAlignment="Center" Text="证书 (.pem)" Width="100" />
+                        <TextBox x:Name="CertBox" Width="400" IsReadOnly="True" PlaceholderText="可选（pk8 模式下需要）" />
+                        <Button Click="BrowseCert_Click" Content="浏览..." />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="ClearSignBtn" Click="ClearSign_Click" Content="清除签名配置" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 镜像 -->
+            <Border
+                Padding="16"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="12">
+                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="镜像参数" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock VerticalAlignment="Center" Text="Sparse 块大小" Width="100" />
+                        <ComboBox x:Name="BlockSizeCombo" Width="160">
+                            <ComboBoxItem Content="4096 字节" Tag="4096" />
+                            <ComboBoxItem Content="1024 字节" Tag="1024" />
+                            <ComboBoxItem Content="2048 字节" Tag="2048" />
+                        </ComboBox>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Button
+                x:Name="SaveBtn"
+                Style="{StaticResource AccentButtonStyle}"
+                Click="Save_Click"
+                Content="保存设置" />
+            <TextBlock
+                x:Name="StatusText"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>
