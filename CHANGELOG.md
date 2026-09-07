@@ -5,7 +5,7 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本管理遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased](https://github.com/OWNER/REPO/compare/v0.1.0...HEAD)
+## [1.0.0](https://github.com/Hinana0325/ROM-Package-Maker/compare/v0.1.0...v1.0.0) - 2026-09-07
 
 ### 新增
 
@@ -179,11 +179,23 @@
 
 - **payload REPLACE 数据不足块时越界（由 payload 专项测试发现）**：`WriteToExtents` 要求操作数据长度与目标 extents 总长严格相等，遇到不足块的非对齐数据直接 `ArgumentOutOfRangeException`。按 update\_metadata.proto 规范（REPLACE 家族 "zero padding out to block size"）改为不足部分保持预置零、超出才报错；经验：**解析器行为要对照上游规范而非只依赖块对齐的常见样本**
 
+- **vendor\_boot 头偏移整体错 1024 字节（由小米 nezha 真机刷机包发现）**：头大小误用 3136/3140，真实 AOSP 规范为 v3=**2112** / v4=**2128**（cmdline@28[2048]、tags\_addr@2076、name@2080、header\_size@2096、dtb\_size@2100、dtb\_addr@2104；v4 附加 vendor\_ramdisk\_table 与 bootconfig 字段 @2112-2124）。旧偏移导致 4.3 MB 的 DTB 全部丢失、内核/ramdisk 加载地址被写成 0。已按 `bootimg.h` 真实偏移重写 `ParseVendorBoot` / `WriteVendorBoot`，5 个真机 boot 类镜像字节级往返一致
+
+- **boot v4 头大小写 1580，应为 1584（真机样本发现）**：v4 = v3 头（1580）+ `signature_size`（@1580，4 字节）= **1584**，且 signature 数据未捕获。已补 `HeaderV4Size=1584`、`SignatureSize` 字段的解析与回写
+
+- **SparseImage don't-care 大块崩溃（真机 14.25 GiB super.img 实测）**：单个 don't-care chunk 可超过 2 GiB（实测最大 2.62 GiB），旧实现 `new byte[chunkBlocks*blkSz]` 抛 `OverflowException`。改为 1 MiB 分块循环写出
+
+- **分区间页对齐填充被清零（真机 pvmfw 镜像实测 79 字节差异）**：boot / vendor\_boot 各段之间的页对齐 gap 此前直接补零，未保留原始填充内容。新增 `Gaps` 捕获与回写，往返后逐字节一致
+
+- **自测从「往返自洽」升级为「规范字节位置断言」**：自产自销的 Write→Parse 往返测试会通过「自己写出的错误规范」，上述 vendor\_boot / boot v4 / sparse 三个 P0/P1 均因此漏出。自测新增 25 项按 AOSP `bootimg.h` 真实偏移的断言（boot v4 spec / vendor\_boot v4 spec / 2.29 GiB sparse don't-care），总数 132 → **157 项全部通过**
+
+- **新增 `_realtest/` 真机样本验证台**：独立工程（共用主项目 `Services/*.cs`），子命令 `boot`（解析 + 字节级往返比对）/ `avb`（vbmeta 标志与 release string）/ `super`（sparse 解包 + liblp 元数据解析）/ `ext4`（superblock + 文件提取）/ `all`（按魔数自动分派），并用 Python 独立实现交叉复核 liblp。已用小米 nezha HyperOS 3.0 线刷包 19 个镜像实测通过
+
 ### 计划中
 
 - （Roadmap 已全部完成，后续按需求规划）
 
-## [0.1.0](https://github.com/OWNER/REPO/releases/tag/v0.1.0) - 2026-09-05
+## [0.1.0](https://github.com/Hinana0325/ROM-Package-Maker/releases/tag/v0.1.0) - 2026-09-05
 
 ### 新增
 

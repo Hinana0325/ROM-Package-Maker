@@ -29,7 +29,8 @@ dotnet publish RomPackageMaker/RomPackageMaker.csproj -c Release -p:RuntimeIdent
 
 ## 分支规范
 
-- `master` — 稳定主分支，保持随时可构建状态
+- `main` — 默认分支（GitHub 展示用），与 `master` 内容保持同步
+- `master` — 开发主线，日常提交推送到这里
 - `feature/<简短功能名>` — 新功能分支，如 `feature/unpack-engine`
 - `fix/<问题简述>` — 缺陷修复分支，如 `fix/progress-bar-overflow`
 
@@ -65,11 +66,25 @@ dotnet publish RomPackageMaker/RomPackageMaker.csproj -c Release -p:RuntimeIdent
 - UI 文案使用中文；代码注释跟随改动范围，用中文说明「为什么」而非「是什么」
 - XAML 命名与资源引用遵循模板既有风格
 
+## 测试
+
+提交涉及 `Services/` 下镜像引擎（BootImage / SparseImage / SuperImage / Ext4Reader / Ext4Writer）的改动时：
+
+```bash
+# 端到端回归自测（157 项断言，应全部通过）
+dotnet run --project _selftest/TestProj
+
+# 有真实刷机包样本时，用真机验证台做字节级往返比对
+cd _realtest && dotnet build -c Release && dotnet run -c Release -- boot <镜像文件>
+```
+
+**重要**：镜像格式相关的行为变更必须按 AOSP 上游规范（`bootimg.h` / sparse 格式 / liblp）的**真实字节位置**补充断言，不能只用自身引擎 Write→Parse 往返验证——往返自洽无法发现「写出不符合规范的文件」这类缺陷。
+
 ## 提交 PR 流程
 
 1. Fork 或基于 `master` 创建功能分支
 2. 完成开发并本地验证（Debug + Release 编译、实际运行）
-3. 如涉及用户可见变更，同步更新 [CHANGELOG.md](CHANGELOG.md) 的 `Unreleased` 段
+3. 如涉及用户可见变更，在 [CHANGELOG.md](CHANGELOG.md) 顶部新增（或更新）`## [Unreleased]` 段
 4. PR 标题遵循提交信息约定，正文描述动机与验证方式
 5. 等待 CI 通过与维护者评审
 

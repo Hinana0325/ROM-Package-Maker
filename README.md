@@ -1,6 +1,6 @@
 # ROM Package Maker · ROM 制作工具
 
-[![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ci.yml)
+[![CI](https://github.com/Hinana0325/ROM-Package-Maker/actions/workflows/ci.yml/badge.svg)](https://github.com/Hinana0325/ROM-Package-Maker/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/)
 [![WinUI 3](https://img.shields.io/badge/WinUI-3%20%2B%20Windows%20App%20SDK-0063B1)](https://learn.microsoft.com/windows/apps/windows-app-sdk/)
@@ -19,7 +19,7 @@ Android ROM 解包、定制与打包的 Windows 原生桌面工具。基于微�
 
 - **sparse 镜像处理** — Android sparse image（`system.img` 常见格式）的 raw / fill / don't-care 块解包与重新 sparse 化
 
-- **boot.img 解包与重打包** — boot / recovery 镜像头解析、cpio（newc）ramdisk 解包重组、gzip 压缩
+- **boot.img 解包与重打包** — boot / recovery / vendor\_boot 镜像头解析（v0–v4 全版本，按 AOSP `bootimg.h` 真实偏移）、cpio（newc）ramdisk 解包重组、gzip 压缩、分区间填充保真
 
 - **super.img 动态分区** — super 分区动态布局解析，拆出子分区
 
@@ -92,8 +92,8 @@ Android ROM 解包、定制与打包的 Windows 原生桌面工具。基于微�
 
 ```bash
 # 克隆仓库
-git clone https://github.com/OWNER/REPO.git
-cd REPO
+git clone https://github.com/Hinana0325/ROM-Package-Maker.git
+cd ROM-Package-Maker
 
 # 编译运行（首次会还原 NuGet 包）
 dotnet run --project RomPackageMaker/RomPackageMaker.csproj
@@ -145,7 +145,7 @@ RomPackageMaker/
 │   ├── SparseImage.cs            # Android sparse 镜像解包 / 重打包
 │   ├── Ext4Reader.cs             # ext4 文件系统只读解析（extent）
 │   ├── Ext4Writer.cs             # ext4 文件系统重建
-│   ├── BootImage.cs              # boot.img 解析 / 重打包（cpio + gzip）
+│   ├── BootImage.cs              # boot / vendor_boot 解析 / 重打包（cpio + gzip）
 │   ├── SuperImage.cs             # super 动态分区布局解析
 │   ├── ZipSigner.cs              # zip 刷机包 APK v1 签名
 │   ├── AppSettings.cs            # 设置持久化（appsettings.json）
@@ -153,6 +153,13 @@ RomPackageMaker/
 ├── Assets/                       # 图标与启动资源
 ├── app.manifest                  # 应用清单
 └── Package.appxmanifest          # 打包清单（可选 MSIX 用）
+
+_selftest/
+└── TestProj/                     # 端到端回归自测（157 项断言：全闭环 + AOSP 规范字节位置断言）
+
+_realtest/
+├── Program.cs                    # 真机样本验证台（boot / avb / super / ext4 / all 子命令）
+└── unsparse_head.py              # Python 独立 liblp 复核脚本
 ```
 
 ## 开发指南
@@ -175,6 +182,15 @@ RomPackageMaker/
 | v0.6  | 预装精简、ROOT 集成、定制模板        | ✅ 完成  |
 | v0.7 | 多任务队列、AVB / dm-verity 处理 | ✅ 完成 |
 | v0.8 | payload.bin（OTA 增量包）解析与提取 | ✅ 完成 |
+| v1.0 | 镜像引擎规范符合性修复（boot v4 / vendor\_boot / sparse 大块）、真机样本验证台 | ✅ 完成 |
+
+> 初始 Roadmap 已全部完成。v1.0 重点是用真实厂商刷机包（小米 nezha HyperOS 3.0，19 个镜像、14.25 GiB super.img）验证并修复了镜像引擎的规范符合性缺陷。
+
+## 质量保障
+
+- **端到端回归自测**（`_selftest/TestProj`，157 项断言全部通过）：用自身引擎从零构造完整 ROM 并走「解包 → 定制 → 打包 → 再解包」全闭环，其中 25 项按 AOSP `bootimg.h` / sparse / liblp 规范的**真实字节位置**断言（而非仅 Write→Parse 往返自洽）
+- **真机样本验证台**（`_realtest`）：独立工程，直接用厂商线刷包实测各镜像引擎——boot 类镜像做**字节级往返比对**（报告首个差异位置），sparse / super / ext4 / vbmeta 分别解析；并用 Python 独立实现交叉复核 liblp 元数据
+- **经验教训**：解析器测试不能只用自身引擎合成输入（会通过「自己写出的错误规范」），关键格式必须对照上游规范字节位置或第三方实现交叉验证
 
 ## 许可证
 
