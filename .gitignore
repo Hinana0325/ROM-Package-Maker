@@ -40,6 +40,12 @@ BundleArtifacts/
 *.pfx
 *.cer
 
+# ===== 签名密钥（严禁入库）=====
+*.pk8
+*.pem
+*.key
+*.keystore
+
 # 发布输出
 publish/
 PublishScripts/
@@ -68,3 +74,9 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 .DS_Store
+
+# 临时文件与素材
+.workbuddy/
+RomPackageMaker/Assets/_masters/
+RomPackageMaker/Assets/AppIconNew.jpg
+RomPackageMaker/Assets/AppIconNew.png

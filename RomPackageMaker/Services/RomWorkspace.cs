@@ -49,4 +49,18 @@ internal sealed class PartitionManifest
     public long OriginalSize { get; set; }
     /// <summary>boot 镜像的页大小等附加参数。</summary>
     public Dictionary<string, string>? Metadata { get; set; }
+    /// <summary>super 镜像的子分区清单（按解包顺序）。</summary>
+    public List<SubPartitionManifest>? SubPartitions { get; set; }
+}
+
+internal sealed class SubPartitionManifest
+{
+    /// <summary>子分区名（如 system_a / vendor_a）。</summary>
+    public string Name { get; set; } = string.Empty;
+    /// <summary>子镜像类型：ext4 | raw。</summary>
+    public string ImageType { get; set; } = "raw";
+    /// <summary>解包输出目录（相对工作区）。</summary>
+    public string ExtractedDir { get; set; } = string.Empty;
+    /// <summary>原始大小（字节）。</summary>
+    public long OriginalSize { get; set; }
 }

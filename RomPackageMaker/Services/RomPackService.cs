@@ -73,6 +73,13 @@ public sealed class RomPackService : IRomPackService
             }
         }
 
+        // A/B OTA 刷机包：payload.bin 中的分区镜像需要专用流程提取
+        if (File.Exists(Path.Combine(extractDir, "payload.bin")))
+        {
+            progress.Report(new RomTaskProgress(33, "检测到 payload.bin",
+                "  A/B OTA 有效载荷——请使用「Payload / OTA」页提取分区镜像后再解包。"));
+        }
+
         // 查找并解包其中的 .img 文件
         var imgFiles = Directory.GetFiles(extractDir, "*.img", SearchOption.AllDirectories);
         // 按路径长度排序，优先处理顶层
@@ -135,36 +142,29 @@ public sealed class RomPackService : IRomPackService
             OriginalSize = new FileInfo(imgPath).Length,
         };
 
-        using var fs = File.OpenRead(imgPath);
-
-        // 检测镜像类型
-        ImageType type = DetectImageType(fs);
-        Stream workStream = fs;
-        bool ownStream = false;
-
-        // sparse 镜像：先展开，再判断真实类型（可能是 ext4 或 super）
-        if (type == ImageType.Sparse)
-        {
-            progress.Report(new RomTaskProgress(15, "展开 sparse 镜像"));
-            var rawMs = new MemoryStream();
-            SparseImage.Unsparse(fs, rawMs, progress, cancellationToken);
-            rawMs.Position = 0;
-            ImageType innerType = DetectImageType(rawMs);
-            if (innerType == ImageType.Super)
-            {
-                type = ImageType.Super;
-            }
-            else
-            {
-                type = ImageType.Ext4;
-            }
-            pm.WasSparse = true;
-            workStream = rawMs;
-            ownStream = true;
-        }
+        Stream workStream = File.OpenRead(imgPath);
+        ImageType type = DetectImageType(workStream);
+        string? tempRaw = null;
 
         try
         {
+            // sparse 镜像：展开到临时文件再判断真实类型（可能是 ext4 或 super），避免大镜像全量驻留内存
+            if (type == ImageType.Sparse)
+            {
+                progress.Report(new RomTaskProgress(15, "展开 sparse 镜像"));
+                tempRaw = Path.Combine(Path.GetTempPath(), "rommaker_unsparse_" + Guid.NewGuid().ToString("N")[..8] + ".img");
+                using (var outFs = File.Create(tempRaw))
+                {
+                    SparseImage.Unsparse(workStream, outFs, progress, cancellationToken);
+                }
+                workStream.Dispose();
+                workStream = File.OpenRead(tempRaw);
+                pm.WasSparse = true;
+
+                ImageType innerType = DetectImageType(workStream);
+                type = innerType == ImageType.Super ? ImageType.Super : ImageType.Ext4;
+            }
+
             switch (type)
             {
                 case ImageType.Boot:
@@ -174,7 +174,7 @@ public sealed class RomPackService : IRomPackService
 
                 case ImageType.Ext4:
                     pm.ImageType = "ext4";
-                    UnpackExt4Image(workStream, outputDir, wasSparse: false, progress, cancellationToken);
+                    UnpackExt4Image(workStream, outputDir, progress, cancellationToken);
                     break;
 
                 case ImageType.Super:
@@ -184,14 +184,22 @@ public sealed class RomPackService : IRomPackService
 
                 default:
                     pm.ImageType = "raw";
-                    File.Copy(imgPath, Path.Combine(outputDir, Path.GetFileName(imgPath)), true);
+                    workStream.Position = 0;
+                    using (var outFs = File.Create(Path.Combine(outputDir, Path.GetFileName(imgPath))))
+                    {
+                        workStream.CopyTo(outFs);
+                    }
                     progress.Report(new RomTaskProgress(100, "复制原始镜像"));
                     break;
             }
         }
         finally
         {
-            if (ownStream) workStream.Dispose();
+            workStream.Dispose();
+            if (tempRaw is not null)
+            {
+                try { File.Delete(tempRaw); } catch { }
+            }
         }
 
         return pm;
@@ -216,8 +224,8 @@ public sealed class RomPackService : IRomPackService
                 head.Slice(0, 8).SequenceEqual(System.Text.Encoding.ASCII.GetBytes("VNDRBOOT")))
                 return ImageType.Boot;
 
-            // Super partition magic: 0x56454C41 ("ALEV" LE)
-            if (System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(head) == 0x56454C41)
+            // Super：geometry 魔数位于 0x1000，metadata 头魔数位于 0x3000
+            if (SuperImage.IsSuperImage(stream))
                 return ImageType.Super;
 
             // ext4: superblock magic at offset 1024
@@ -250,7 +258,7 @@ public sealed class RomPackService : IRomPackService
             ["os_version"] = info.OsVersion.ToString("X8"),
         };
 
-        // 保存原始参数文件
+        // 保存原始参数文件（BootInfo 为 public 字段的 record，必须 IncludeFields 才能序列化）
         File.WriteAllText(Path.Combine(outputDir, "boot_params.json"),
             System.Text.Json.JsonSerializer.Serialize(info with
             {
@@ -259,7 +267,7 @@ public sealed class RomPackService : IRomPackService
                 Second = Array.Empty<byte>(),
                 Dt = Array.Empty<byte>(),
                 VendorRamdisk = Array.Empty<byte>(),
-            }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true, IncludeFields = true }));
 
         progress.Report(new RomTaskProgress(40, "保存 kernel"));
         File.WriteAllBytes(Path.Combine(outputDir, "kernel"), info.Kernel);
@@ -291,41 +299,29 @@ public sealed class RomPackService : IRomPackService
         progress.Report(new RomTaskProgress(100, "boot 镜像解包完成"));
     }
 
-    private void UnpackExt4Image(Stream stream, string outputDir, bool wasSparse, IProgress<RomTaskProgress> progress, CancellationToken cancellationToken)
+    private void UnpackExt4Image(Stream ext4Stream, string outputDir, IProgress<RomTaskProgress> progress, CancellationToken cancellationToken)
     {
-        Stream ext4Stream;
-        if (wasSparse)
-        {
-            progress.Report(new RomTaskProgress(15, "展开 sparse 镜像"));
-            var rawMs = new MemoryStream();
-            SparseImage.Unsparse(stream, rawMs, progress, cancellationToken);
-            rawMs.Position = 0;
-            ext4Stream = rawMs;
-        }
-        else
-        {
-            ext4Stream = stream;
-        }
-
         progress.Report(new RomTaskProgress(30, "解析 ext4 文件系统"));
-        using var reader = new Ext4Reader(ext4Stream, leaveOpen: !wasSparse);
+        using var reader = new Ext4Reader(ext4Stream, leaveOpen: true);
         reader.ExtractTo(outputDir, progress, cancellationToken);
-
-        if (wasSparse) ext4Stream.Dispose();
         progress.Report(new RomTaskProgress(100, "ext4 解包完成"));
     }
 
     private void UnpackSuperImage(Stream stream, string outputDir, PartitionManifest pm, IProgress<RomTaskProgress> progress, CancellationToken cancellationToken)
     {
         progress.Report(new RomTaskProgress(10, "解析 super 分区表"));
-        var partitions = SuperImage.Parse(stream);
-        progress.Report(new RomTaskProgress(30, $"发现 {partitions.Count} 个逻辑分区"));
+        var meta = SuperImage.Parse(stream);
+        progress.Report(new RomTaskProgress(20, $"发现 {meta.Partitions.Count} 个逻辑分区"));
 
-        for (int i = 0; i < partitions.Count; i++)
+        // 保存 super 重建参数（geometry / 头版本 / 属性 / 组 / 块设备）
+        SuperImage.SuperParams.FromMetadata(meta).Save(outputDir);
+        pm.SubPartitions = new List<SubPartitionManifest>();
+
+        for (int i = 0; i < meta.Partitions.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var p = partitions[i];
-            progress.Report(new RomTaskProgress(30 + i * 70 / Math.Max(1, partitions.Count), $"提取 {p.Name}"));
+            var p = meta.Partitions[i];
+            progress.Report(new RomTaskProgress(20 + i * 70 / Math.Max(1, meta.Partitions.Count), $"提取 {p.Name}"));
 
             string subImgPath = Path.Combine(outputDir, p.Name + ".img");
             using (var outFs = File.Create(subImgPath))
@@ -333,29 +329,36 @@ public sealed class RomPackService : IRomPackService
                 SuperImage.ExtractPartition(stream, p, outFs);
             }
 
-            // 递归解包子镜像
+            // 递归解包子镜像（子分区在 super 内为原始镜像，不会是 sparse）
+            var subPm = new SubPartitionManifest
+            {
+                Name = p.Name,
+                ExtractedDir = Path.Combine(pm.ExtractedDir, p.Name).Replace('\\', '/'),
+                OriginalSize = p.TotalSize,
+                ImageType = "raw",
+            };
             string subDir = Path.Combine(outputDir, p.Name);
-            Directory.CreateDirectory(subDir);
             try
             {
                 using var subFs = File.OpenRead(subImgPath);
                 var subType = DetectImageType(subFs);
-                var subPm = new PartitionManifest { Name = p.Name, ExtractedDir = p.Name, OriginalSize = p.TotalSize };
-                if (subType == ImageType.Ext4 || subType == ImageType.Sparse)
+                if (subType == ImageType.Ext4)
                 {
                     subPm.ImageType = "ext4";
-                    subPm.WasSparse = subType == ImageType.Sparse;
-                    UnpackExt4Image(subFs, subDir, subType == ImageType.Sparse, progress, cancellationToken);
-                }
-                else
-                {
-                    subPm.ImageType = "raw";
+                    Directory.CreateDirectory(subDir);
+                    UnpackExt4Image(subFs, subDir, progress, cancellationToken);
                 }
             }
             catch (Exception ex)
             {
                 progress.Report(new RomTaskProgress(50, $"{p.Name} 子镜像解包跳过", $"  {ex.Message}"));
+                subPm.ImageType = "raw";
+                if (Directory.Exists(subDir))
+                {
+                    try { Directory.Delete(subDir, true); } catch { }
+                }
             }
+            pm.SubPartitions.Add(subPm);
         }
         progress.Report(new RomTaskProgress(100, "super 解包完成"));
     }
@@ -405,6 +408,9 @@ public sealed class RomPackService : IRomPackService
                         break;
                     case "boot":
                         PackBootImage(partDir, outputImg, pm, progress, cancellationToken);
+                        break;
+                    case "super":
+                        PackSuperImage(workspaceDir, partDir, outputImg, pm, progress, cancellationToken);
                         break;
                     default:
                         // raw：直接复制目录中的 .img 文件
@@ -473,7 +479,7 @@ public sealed class RomPackService : IRomPackService
         {
             using var inFs = File.OpenRead(rawImg);
             using var outFs = File.Create(outputImg);
-            SparseImage.Sparseify(inFs, outFs, 4096, progress, cancellationToken);
+            SparseImage.Sparseify(inFs, outFs, AppSettings.Current.SparseBlockSize, progress, cancellationToken);
             File.Delete(rawImg);
         }
         else
@@ -481,6 +487,101 @@ public sealed class RomPackService : IRomPackService
             if (File.Exists(outputImg)) File.Delete(outputImg);
             File.Move(rawImg, outputImg);
         }
+    }
+
+    private void PackSuperImage(string workspaceDir, string partDir, string outputImg, PartitionManifest pm, IProgress<RomTaskProgress> progress, CancellationToken cancellationToken)
+    {
+        progress.Report(new RomTaskProgress(30, "读取 super 重建参数"));
+        var prms = SuperImage.SuperParams.Load(partDir);
+        var attrByName = prms.Partitions.ToDictionary(p => p.Name, p => (p.Attributes, p.GroupIndex));
+
+        // 子分区清单：优先使用 manifest，旧工作区回退到目录下的 .img 文件
+        var subs = pm.SubPartitions ?? new List<SubPartitionManifest>();
+        if (subs.Count == 0)
+        {
+            foreach (string img in Directory.GetFiles(partDir, "*.img"))
+            {
+                subs.Add(new SubPartitionManifest { Name = Path.GetFileNameWithoutExtension(img), ImageType = "raw" });
+            }
+        }
+
+        var entries = new List<SuperImage.SuperPackEntry>();
+        var tempFiles = new List<string>();
+        try
+        {
+            foreach (var sub in subs)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var entry = new SuperImage.SuperPackEntry { Name = sub.Name };
+                if (attrByName.TryGetValue(sub.Name, out var attr))
+                {
+                    entry.Attributes = attr.Attributes;
+                    entry.GroupIndex = attr.GroupIndex;
+                }
+
+                if (sub.ImageType == "ext4")
+                {
+                    string subDir = Path.Combine(workspaceDir, sub.ExtractedDir);
+                    if (Directory.Exists(subDir) && Directory.EnumerateFileSystemEntries(subDir).Any())
+                    {
+                        progress.Report(new RomTaskProgress(35, "重建子分区", sub.Name));
+                        string tempImg = Path.Combine(Path.GetTempPath(), "rommaker_sub_" + Guid.NewGuid().ToString("N")[..8] + ".img");
+                        using (var fs = File.Create(tempImg))
+                        {
+                            var writer = new Ext4Writer();
+                            writer.Build(subDir, fs, progress, cancellationToken);
+                        }
+                        tempFiles.Add(tempImg);
+                        entry.ImagePath = tempImg;
+                    }
+                }
+
+                entry.ImagePath ??= FindSubImage(partDir, sub.Name);
+                if (entry.ImagePath is null)
+                {
+                    progress.Report(new RomTaskProgress(35, "子分区镜像缺失，按零大小处理", sub.Name));
+                }
+                entries.Add(entry);
+            }
+
+            // 重建 super（数据区 + 全槽位 metadata）
+            string rawSuper = outputImg + ".raw";
+            progress.Report(new RomTaskProgress(50, "重建 super 镜像"));
+            using (var outFs = File.Create(rawSuper))
+            {
+                SuperImage.Pack(prms, entries, outFs, progress, cancellationToken);
+            }
+
+            if (pm.WasSparse)
+            {
+                using var inFs = File.OpenRead(rawSuper);
+                using var outFs = File.Create(outputImg);
+                SparseImage.Sparseify(inFs, outFs, AppSettings.Current.SparseBlockSize, progress, cancellationToken);
+                File.Delete(rawSuper);
+            }
+            else
+            {
+                if (File.Exists(outputImg)) File.Delete(outputImg);
+                File.Move(rawSuper, outputImg);
+            }
+        }
+        finally
+        {
+            foreach (string temp in tempFiles)
+            {
+                try { File.Delete(temp); } catch { }
+            }
+        }
+        progress.Report(new RomTaskProgress(100, "super 镜像重打包完成"));
+    }
+
+    /// <summary>在 super 分区目录中查找子镜像文件（system_a.img 等）。</summary>
+    private static string? FindSubImage(string partDir, string subName)
+    {
+        string direct = Path.Combine(partDir, subName + ".img");
+        if (File.Exists(direct)) return direct;
+        return Directory.GetFiles(partDir, subName + ".*.img").FirstOrDefault()
+            ?? Directory.GetFiles(partDir, subName + ".*").FirstOrDefault(f => f.EndsWith(".img", StringComparison.OrdinalIgnoreCase));
     }
 
     private void PackBootImage(string partDir, string outputImg, PartitionManifest pm, IProgress<RomTaskProgress> progress, CancellationToken cancellationToken)
@@ -491,24 +592,39 @@ public sealed class RomPackService : IRomPackService
         if (File.Exists(paramsPath))
         {
             var json = File.ReadAllText(paramsPath);
-            info = System.Text.Json.JsonSerializer.Deserialize<BootImage.BootInfo>(json) ?? info;
+            // 与保存侧一致：BootInfo 为 public 字段的 record，必须 IncludeFields 才能读回
+            info = System.Text.Json.JsonSerializer.Deserialize<BootImage.BootInfo>(json,
+                new System.Text.Json.JsonSerializerOptions { IncludeFields = true }) ?? info;
         }
 
-        // 读取 kernel
+        // 读取 kernel（头部 kernel_size 依据实际数据重算，避免参数缺失/过期导致往返不一致）
         string kernelPath = Path.Combine(partDir, "kernel");
-        if (File.Exists(kernelPath)) info.Kernel = File.ReadAllBytes(kernelPath);
+        if (File.Exists(kernelPath))
+        {
+            info.Kernel = File.ReadAllBytes(kernelPath);
+            info.KernelSize = (uint)info.Kernel.Length;
+        }
+
+        // vendor_boot：vendor_ramdisk 单独保存，必须回读
+        string vendorRamdiskPath = Path.Combine(partDir, "vendor_ramdisk");
+        if (info.IsVendorBoot && File.Exists(vendorRamdiskPath))
+        {
+            info.VendorRamdisk = File.ReadAllBytes(vendorRamdiskPath);
+            info.VendorRamdiskSize = (uint)info.VendorRamdisk.Length;
+        }
 
         // 读取 ramdisk：优先 ramdisk/ 目录重新打包为 cpio.gz，否则用 ramdisk.cpio.gz
+        // 仅当目录非空时才重新打包，避免解压失败留下的空目录覆盖原始 ramdisk
         string ramdiskDir = Path.Combine(partDir, "ramdisk");
         string ramdiskCpioGz = Path.Combine(partDir, "ramdisk.cpio.gz");
-        if (Directory.Exists(ramdiskDir))
+        if (!info.IsVendorBoot && Directory.Exists(ramdiskDir) && Directory.EnumerateFileSystemEntries(ramdiskDir).Any())
         {
             progress.Report(new RomTaskProgress(60, "重新打包 ramdisk"));
             byte[] cpio = CreateCpio(ramdiskDir);
             info.Ramdisk = BootImage.CompressRamdiskGzip(cpio);
             info.RamdiskSize = (uint)info.Ramdisk.Length;
         }
-        else if (File.Exists(ramdiskCpioGz))
+        else if (!info.IsVendorBoot && File.Exists(ramdiskCpioGz))
         {
             info.Ramdisk = File.ReadAllBytes(ramdiskCpioGz);
             info.RamdiskSize = (uint)info.Ramdisk.Length;
@@ -631,19 +747,12 @@ public sealed class RomPackService : IRomPackService
             uint nameSize = (uint)rel.Length + 1;
 
             // 构造 header（newc 格式，110 字节）
-            string header = string.Format(
-                "070701" +
-                "{0:X8}{1:X8}{2:X8}{3:X8}{4:X8}{5:X8}{6:X8}" +
-                "{7:X8}{8:X8}{9:X8}{10:X8}{11:X8}{12:X8}{13:X8}",
-                inode++, mode, 0u, 0u, 0u, 0u,
-                fileSize, 0u, 0u, 0u, nameSize, 0u, 0u, 0u);
-            // 注意：newc 实际字段顺序为：
-            // c_magic[6] c_ino[8] c_mode[8] c_uid[8] c_gid[8] c_nlink[8]
-            // c_mtime[8] c_filesize[8] c_devmajor[8] c_devminor[8] c_rdevmajor[8] c_rdevminor[8]
-            // c_namesize[8] c_check[8]
+            // 字段顺序：c_magic[6] c_ino[8] c_mode[8] c_uid[8] c_gid[8] c_nlink[8]
+            //   c_mtime[8] c_filesize[8] c_devmajor[8] c_devminor[8] c_rdevmajor[8] c_rdevminor[8]
+            //   c_namesize[8] c_check[8]
             var sb = new System.Text.StringBuilder(110);
             sb.Append("070701");
-            sb.AppendFormat("{0:X8}", inode - 1);
+            sb.AppendFormat("{0:X8}", inode++);
             sb.AppendFormat("{0:X8}", mode);
             sb.Append("00000000"); // uid
             sb.Append("00000000"); // gid

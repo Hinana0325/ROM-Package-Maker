@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 using RomPackageMaker.Services;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
@@ -15,6 +16,8 @@ public sealed partial class UnpackPage : Page
     public UnpackPage()
     {
         InitializeComponent();
+        // 缓存页面：切换导航后保留已选路径、进度与日志
+        NavigationCacheMode = NavigationCacheMode.Required;
         // 填充默认工作目录
         if (!string.IsNullOrEmpty(AppSettings.Current.DefaultWorkspace))
         {
@@ -50,7 +53,11 @@ public sealed partial class UnpackPage : Page
         picker.FileTypeFilter.Add("*");
         InitializePicker(picker);
         var folder = await picker.PickSingleFolderAsync();
-        if (folder is not null) WorkspaceBox.Text = folder.Path;
+        if (folder is not null)
+        {
+            WorkspaceBox.Text = folder.Path;
+            WorkspaceState.CurrentWorkspace = folder.Path;
+        }
     }
 
     private void UnpackPage_DragOver(object sender, DragEventArgs e)
@@ -77,6 +84,7 @@ public sealed partial class UnpackPage : Page
         else if (items[0] is StorageFolder folder)
         {
             WorkspaceBox.Text = folder.Path;
+            WorkspaceState.CurrentWorkspace = folder.Path;
         }
     }
 

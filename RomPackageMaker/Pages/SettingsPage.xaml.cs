@@ -10,6 +10,8 @@ public sealed partial class SettingsPage : Page
     public SettingsPage()
     {
         InitializeComponent();
+        // 缓存页面：切换导航后保留未保存的设置编辑状态
+        NavigationCacheMode = Microsoft.UI.Xaml.Navigation.NavigationCacheMode.Required;
         LoadSettings();
     }
 

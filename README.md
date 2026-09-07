@@ -25,6 +25,18 @@ Android ROM 解包、定制与打包的 Windows 原生桌面工具。基于微�
 
 - **zip 刷机包签名** — APK v1（JAR）签名，内置自签名测试证书，支持在设置中配置自定义密钥
 
+- **build.prop 可视化编辑器** — 保留注释与行序的解析引擎、从解包工作目录自动查找、列表化编辑与搜索过滤、40+ 常见属性中文说明、保存前自动 `.bak` 备份
+
+- **预装应用精简** — 扫描 system / vendor / product / system\_ext / odm（含 super 嵌套）的 app 与 priv-app，目录型与单 APK 文件型布局均支持；搜索过滤、批量勾选删除（自动清理同名 odex / vdex / art），显示每个应用的分区与体积
+
+- **ROOT 集成（Magisk / KernelSU）** — 两种方式：用已修补的 boot.img 替换原镜像（打包时 raw 直通，支持 boot / init\_boot / vendor\_boot，无 boot 分区时可新建条目）；或把 Magisk 管理器 APK 内置为 system 应用
+
+- **定制模板** — 把 build.prop 属性覆盖 + 预装精简清单 + ROOT 集成保存为 JSON 模板（`%APPDATA%\RomPackageMaker\templates`），一键应用到任意工作目录；属性覆盖优先写入 system 分区的 build.prop，未命中按名称匹配删除
+
+- **多任务队列** — 解包 / 打包任务加入队列按序执行（同一时间仅运行一个），逐项进度条、排队 / 运行中取消、失败原因展示、完成记录清理
+
+- **AVB / dm-verity 处理** — 修改分区后一键禁用 vbmeta 验证标志（等价 `fastboot --disable-verity --disable-verification`），或截断镜像末尾的 AVB 校验页脚恢复原像；自动扫描工作区全部 vbmeta 与带页脚镜像（含 super 嵌套与 `_zip`）
+
 **应用体验**
 
 - **原生 Windows 体验** — WinUI 3 + Mica 材质背景 + Fluent 设计语言
@@ -43,17 +55,15 @@ Android ROM 解包、定制与打包的 Windows 原生桌面工具。基于微�
 
 ### 规划中（Roadmap）
 
-- [ ] build.prop 可视化编辑器
+- [x] build.prop 可视化编辑器
+- [x] 预装应用精简管理
+- [x] Magisk / KernelSU ROOT 集成
+- [x] 定制模板系统
+- [x] 多任务队列
+- [x] AVB / dm-verity 处理
+- [x] payload.bin（OTA 增量包）解析
 
-- [ ] 预装应用精简管理
-
-- [ ] Magisk / KernelSU ROOT 集成
-
-- [ ] 多任务队列与配置模板
-
-- [ ] AVB / dm-verity 处理
-
-- [ ] payload.bin（OTA 增量包）解析
+> 初始 Roadmap 已全部完成。
 
 ## 界面预览
 
@@ -66,7 +76,8 @@ Android ROM 解包、定制与打包的 Windows 原生桌面工具。基于微�
 | 语言    | C# / .NET 8.0                               |
 | UI 框架 | WinUI 3（Windows App SDK 2.2）                |
 | 布局    | TitleBar + NavigationView + MicaBackdrop    |
-| 部署    | 非打包（unpackaged）自包含运行时，目标机器无需安装任何运行时         |
+| 部署 | 非打包（unpackaged）自包含运行时，目标机器无需安装任何运行时 |
+| 压缩 | SharpCompress（payload XZ 数据解压，纯托管） |
 | 目标平台  | Windows 10 1809（17763）及以上，x86 / x64 / ARM64 |
 
 ## 环境要求
@@ -111,12 +122,26 @@ RomPackageMaker/
 │   ├── HomePage.xaml             # 概览页（工作流引导）
 │   ├── UnpackPage.xaml           # 解包工作台（拖放 / 进度 / 取消 / 日志）
 │   ├── PackPage.xaml             # 打包工作台（拖放 / 签名选项 / 取消 / 日志）
+│   ├── TaskQueuePage.xaml        # 任务队列（按序执行 / 取消 / 进度监控）
+│   ├── PayloadPage.xaml          # payload.bin / OTA 解析与分区提取
+│   ├── BuildPropPage.xaml        # build.prop 可视化编辑器（搜索 / 编辑 / 备份）
+│   ├── DebloatPage.xaml          # 预装应用精简（扫描 / 勾选 / 批量删除）
+│   ├── RootPage.xaml             # ROOT 集成（boot.img 替换 / Magisk 内置）
+│   ├── AvbPage.xaml              # AVB / dm-verity 处理（禁用验证 / 截断页脚）
+│   ├── TemplatePage.xaml         # 定制模板（编辑 / 保存 / 一键应用）
 │   ├── SettingsPage.xaml         # 设置页（主题 / 默认路径 / 签名密钥 / 块大小）
 │   └── AboutPage.xaml            # 关于页
 ├── Services/
 │   ├── IRomPackService.cs        # ROM 任务管线接口（进度 / 取消 / 日志）
 │   ├── RomPackService.cs         # 管线编排（按输入类型分发到各引擎）
 │   ├── RomWorkspace.cs           # 工作目录布局约定
+│   ├── BuildPropService.cs       # build.prop 解析 / 序列化 / 常见属性说明
+│   ├── WorkspaceScanner.cs       # 预装应用扫描 / 删除
+│   ├── RootService.cs            # ROOT 集成（Magisk 内置 / boot 替换）
+│   ├── TemplateService.cs        # 定制模板存储 / 应用
+│   ├── TaskQueueService.cs       # 多任务队列（顺序执行 / 取消 / 进度）
+│   ├── AvbService.cs             # AVB / dm-verity（vbmeta 标志 / 页脚截断）
+│   ├── WorkspaceState.cs         # 跨页面会话状态（最近工作目录）
 │   ├── SparseImage.cs            # Android sparse 镜像解包 / 重打包
 │   ├── Ext4Reader.cs             # ext4 文件系统只读解析（extent）
 │   ├── Ext4Writer.cs             # ext4 文件系统重建
@@ -146,7 +171,10 @@ RomPackageMaker/
 | v0.2  | zip 解包 / 重打包、boot.img 处理 | ✅ 完成  |
 | v0.3  | ext4 / sparse 镜像解析与重建    | ✅ 完成  |
 | v0.4  | super.img 动态分区、签名        | ✅ 完成  |
-| v0.5+ | ROOT 集成、精简管理、模板系统        | 📋 规划 |
+| v0.5  | build.prop 可视化编辑器        | ✅ 完成  |
+| v0.6  | 预装精简、ROOT 集成、定制模板        | ✅ 完成  |
+| v0.7 | 多任务队列、AVB / dm-verity 处理 | ✅ 完成 |
+| v0.8 | payload.bin（OTA 增量包）解析与提取 | ✅ 完成 |
 
 ## 许可证
 

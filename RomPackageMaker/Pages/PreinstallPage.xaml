@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="RomPackageMaker.Pages.PreinstallPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:RomPackageMaker.Pages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Padding="24,16,24,16" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="应用预装 / 资源替换" />
+
+        <!-- 工作目录 -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+            <TextBox
+                x:Name="WorkspaceBox"
+                Width="440"
+                VerticalAlignment="Center"
+                Header="工作目录（需已解包 system 分区）"
+                IsReadOnly="True"
+                PlaceholderText="选择解包工作目录" />
+            <Button
+                x:Name="BrowseWorkspaceButton"
+                VerticalAlignment="Bottom"
+                Click="BrowseWorkspaceButton_Click"
+                Content="浏览..." />
+        </StackPanel>
+
+        <!-- 应用预装卡片 -->
+        <Border
+            Grid.Row="2"
+            Padding="16"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+            <StackPanel Spacing="12">
+                <TextBlock
+                    FontWeight="SemiBold"
+                    Style="{StaticResource SubtitleTextBlockStyle}"
+                    Text="应用预装（写入 system 分区）" />
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button
+                        x:Name="AddApkButton"
+                        Click="AddApkButton_Click"
+                        Content="添加 APK..." />
+                    <Button
+                        x:Name="ClearApkListButton"
+                        Click="ClearApkListButton_Click"
+                        Content="清空列表" />
+                    <ComboBox
+                        x:Name="PartitionCombo"
+                        MinWidth="140"
+                        Header="安装位置"
+                        SelectedIndex="0">
+                        <ComboBoxItem Content="system/app（普通应用）" />
+                        <ComboBoxItem Content="system/priv-app（特权应用）" />
+                    </ComboBox>
+                    <Button
+                        x:Name="InstallButton"
+                        VerticalAlignment="Bottom"
+                        Click="InstallButton_Click"
+                        Content="预装到工作目录"
+                        Style="{StaticResource AccentButtonStyle}" />
+                </StackPanel>
+
+                <TextBlock
+                    x:Name="ApkHintText"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="添加本地 APK 后统一写入工作目录；预装的应用在打包时进入 ROM。同名应用已存在时跳过并提示。" />
+
+                <Border
+                    x:Name="ApkListBorder"
+                    Padding="0"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Visibility="Collapsed">
+                    <ListView
+                        x:Name="ApkList"
+                        MaxHeight="180"
+                        ItemsSource="{x:Bind ApkItems, Mode=OneWay}"
+                        SelectionMode="None">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="MinHeight" Value="0" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="local:PendingApkItem">
+                                <Grid
+                                    Padding="12,4,12,4"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="0,0,0,1"
+                                    ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="260" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        FontWeight="SemiBold"
+                                        Text="{x:Bind FileName, Mode=OneWay}"
+                                        TextTrimming="CharacterEllipsis"
+                                        ToolTipService.ToolTip="{x:Bind SourcePath}" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        FontFamily="Consolas"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="{x:Bind InfoText, Mode=OneWay}"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <Button
+                                        Grid.Column="2"
+                                        MinWidth="0"
+                                        Padding="8,2"
+                                        VerticalAlignment="Center"
+                                        Click="RemoveApkItem_Click"
+                                        Content="✕" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Border>
+            </StackPanel>
+        </Border>
+
+        <!-- 资源替换卡片 -->
+        <Border
+            Grid.Row="3"
+            Padding="16"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+            <StackPanel Spacing="12">
+                <TextBlock
+                    FontWeight="SemiBold"
+                    Style="{StaticResource SubtitleTextBlockStyle}"
+                    Text="系统资源替换（开机动画 / 字体 / 音频）" />
+
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Width="90"
+                        Text="开机动画" />
+                    <Button
+                        Grid.Column="1"
+                        Click="ReplaceBootanimation_Click"
+                        Content="选择 bootanimation.zip..." />
+                    <TextBlock
+                        x:Name="BootanimationStatus"
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="替换 system/media/bootanimation.zip（校验 desc.txt）" />
+                </Grid>
+
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Width="90"
+                        Text="字体" />
+                    <Button
+                        Grid.Column="1"
+                        Click="ReplaceFonts_Click"
+                        Content="选择 .ttf 文件..." />
+                    <TextBlock
+                        x:Name="FontStatus"
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="复制到 system/fonts/（自定义字体需 ROM 内 fallback 支持）" />
+                </Grid>
+
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Width="90"
+                        Text="铃声 / 音频" />
+                    <Button
+                        Grid.Column="1"
+                        Click="ReplaceAudio_Click"
+                        Content="选择音频文件..." />
+                    <ComboBox
+                        x:Name="AudioKindCombo"
+                        Grid.Column="2"
+                        MinWidth="120"
+                        SelectedIndex="0">
+                        <ComboBoxItem Content="铃声" />
+                        <ComboBoxItem Content="通知音" />
+                        <ComboBoxItem Content="闹钟" />
+                    </ComboBox>
+                    <TextBlock
+                        x:Name="AudioStatus"
+                        Grid.Column="3"
+                        VerticalAlignment="Center"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="复制到 system/media/audio/ 对应目录（ogg / mp3 / wav）" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- hosts 广告过滤卡片 -->
+        <Border
+            Grid.Row="4"
+            Padding="16"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+            <StackPanel Spacing="12">
+                <TextBlock
+                    FontWeight="SemiBold"
+                    Style="{StaticResource SubtitleTextBlockStyle}"
+                    Text="hosts 广告过滤" />
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button
+                        x:Name="ApplyHostsButton"
+                        Click="ApplyHostsButton_Click"
+                        Content="应用内置广告过滤" />
+                    <Button
+                        x:Name="RemoveHostsButton"
+                        Click="RemoveHostsButton_Click"
+                        Content="移除过滤" />
+                    <TextBlock
+                        x:Name="HostsStatus"
+                        VerticalAlignment="Center"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="在 system/etc/hosts 追加带标记的屏蔽块（0.0.0.0 域名），可整体移除" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox
+                        x:Name="CustomHostsBox"
+                        Width="440"
+                        PlaceholderText="自定义域名，逗号 / 换行分隔，如 ads.example.com, track.example.net" />
+                    <Button
+                        x:Name="AppendHostsButton"
+                        VerticalAlignment="Bottom"
+                        Click="AppendHostsButton_Click"
+                        Content="追加自定义域名" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Page>

@@ -47,7 +47,7 @@
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             TextWrapping="Wrap"
-                            Text="在工作目录中精简预装、修改 prop、集成 ROOT（规划中）。" />
+                            Text="修改 build.prop、精简预装应用、集成 ROOT，或一键应用定制模板。" />
                     </StackPanel>
                 </Border>
                 <Border

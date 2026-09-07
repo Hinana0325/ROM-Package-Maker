@@ -1,16 +1,19 @@
 using System.Text.Json;
-using Windows.Storage;
 
 namespace RomPackageMaker.Services;
 
 /// <summary>
-/// 应用设置持久化。将设置存储在 LocalFolder 的 appsettings.json 中，
+/// 应用设置持久化。将设置存储在 %APPDATA%\RomPackageMaker\appsettings.json 中，
 /// 以便在应用重启后保留用户偏好。
+/// 注意：非打包应用不可使用 Windows.Storage.ApplicationData（会 fail-fast 导致进程终止）。
 /// </summary>
 public sealed class AppSettings
 {
     private static readonly string FileName = "appsettings.json";
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
+
+    private static readonly string SettingsDir =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RomPackageMaker");
 
     private static AppSettings? _instance;
     public static AppSettings Current => _instance ??= Load();
@@ -40,8 +43,8 @@ public sealed class AppSettings
     {
         try
         {
-            string folder = ApplicationData.Current.LocalFolder.Path;
-            string path = Path.Combine(folder, FileName);
+            Directory.CreateDirectory(SettingsDir);
+            string path = Path.Combine(SettingsDir, FileName);
             File.WriteAllText(path, JsonSerializer.Serialize(this, JsonOpts));
         }
         catch
@@ -54,8 +57,7 @@ public sealed class AppSettings
     {
         try
         {
-            string folder = ApplicationData.Current.LocalFolder.Path;
-            string path = Path.Combine(folder, FileName);
+            string path = Path.Combine(SettingsDir, FileName);
             if (File.Exists(path))
             {
                 var json = File.ReadAllText(path);

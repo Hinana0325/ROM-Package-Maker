@@ -33,6 +33,9 @@ internal sealed class Ext4Reader : IDisposable
     private const uint INCOMPAT_INLINE_DATA = 0x1000;
     private const uint INCOMPAT_ENCRYPT = 0x4000;
 
+    // xattr 魔数（ibody 与外部块共用）
+    private const uint XattrMagic = 0xEA020000;
+
     public Ext4Reader(Stream stream, bool leaveOpen = false)
     {
         _stream = stream;
@@ -119,18 +122,44 @@ internal sealed class Ext4Reader : IDisposable
     private sealed class InodeInfo
     {
         public ushort Mode;
+        public uint Uid;
+        public uint Gid;
         public ulong Size;
+        public uint Atime;
+        public uint Ctime;
+        public uint Mtime;
         public byte[] Block = Array.Empty<byte>(); // i_block[60]
         public uint Flags;
+        public uint FileAcl;    // i_file_acl（外部 xattr 块）
+        public uint RdevRaw;    // 设备文件 i_block[0] 原始 32 位
+        public byte[] Raw = Array.Empty<byte>(); // 完整 inode（供 xattr 解析）
     }
 
     private InodeInfo ParseInode(byte[] data)
     {
+        // 32 位 uid/gid 由 lo（0x02/0x18）与 hi（0x78/0x7A，osd2.linux2）拼接
+        ushort uidLo = BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(0x02, 2));
+        ushort gidLo = BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(0x18, 2));
+        uint uid = uidLo, gid = gidLo;
+        if (data.Length >= 0x7C)
+        {
+            uid |= (uint)BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(0x78, 2)) << 16;
+            gid |= (uint)BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(0x7A, 2)) << 16;
+        }
+
         var info = new InodeInfo
         {
             Mode = BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(0x00, 2)),
+            Uid = uid,
             Size = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(0x04, 4)),
+            Atime = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(0x08, 4)),
+            Ctime = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(0x0C, 4)),
+            Mtime = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(0x10, 4)),
+            Gid = gid,
             Flags = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(0x20, 4)),
+            FileAcl = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(0x68, 4)), // i_file_acl_lo
+            RdevRaw = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(0x28, 4)),
+            Raw = data,
         };
         if (InodeSize >= 128)
         {
@@ -337,6 +366,103 @@ internal sealed class Ext4Reader : IDisposable
         return Encoding.UTF8.GetString(data);
     }
 
+    // ==================== xattr 解析 ====================
+
+    /// <summary>读取 inode 的全部扩展属性（内联 + 外部块，跳过 external-inode 值）。</summary>
+    private List<Ext4Xattr> ReadXattrs(InodeInfo inode)
+    {
+        var result = new List<Ext4Xattr>();
+        try
+        {
+            // 1. 外部 xattr 块（i_file_acl）：32 字节头（含 16 字节 checksum），
+            //    entries 从块内偏移 32 开始，e_value_offs 相对块首
+            if (inode.FileAcl != 0)
+            {
+                byte[] block = ReadBlock(inode.FileAcl);
+                if (block.Length >= 32 && BinaryPrimitives.ReadUInt32LittleEndian(block.AsSpan(0, 4)) == XattrMagic)
+                {
+                    ParseXattrEntries(block, entriesStart: 32, regionEnd: (int)BlockSize, valueBase: 0, maxValueSize: BlockSize, result);
+                }
+            }
+
+            // 2. 内联 xattr（ibody）：位于 128 + i_extra_isize，4 字节魔数后跟 entries，
+            //    e_value_offs 相对第一个 entry（即 128 + i_extra_isize + 4）
+            if (InodeSize > 128 && inode.Raw.Length >= InodeSize)
+            {
+                ushort extraIsize = BinaryPrimitives.ReadUInt16LittleEndian(inode.Raw.AsSpan(0x80, 2));
+                int areaStart = 128 + extraIsize;
+                if (extraIsize > 0 && areaStart + 4 <= InodeSize &&
+                    BinaryPrimitives.ReadUInt32LittleEndian(inode.Raw.AsSpan(areaStart, 4)) == XattrMagic)
+                {
+                    ParseXattrEntries(inode.Raw, entriesStart: areaStart + 4, regionEnd: InodeSize,
+                        valueBase: areaStart + 4, maxValueSize: (uint)(InodeSize - areaStart - 4), result);
+                }
+            }
+        }
+        catch (IOException)
+        {
+            // xattr 读取失败不影响文件数据提取
+        }
+        return result;
+    }
+
+    /// <summary>遍历 xattr entry 数组。valueBase 为 e_value_offs 的基准偏移。</summary>
+    private static void ParseXattrEntries(byte[] region, int entriesStart, int regionEnd, int valueBase, uint maxValueSize, List<Ext4Xattr> result)
+    {
+        int off = entriesStart;
+        while (off + 16 <= regionEnd)
+        {
+            byte nameLen = region[off];
+            byte nameIndex = region[off + 1];
+            if (nameLen == 0 && nameIndex == 0) break; // 零填充区
+            if (nameLen == 0) break;
+
+            ushort valueOffs = BinaryPrimitives.ReadUInt16LittleEndian(region.AsSpan(off + 2, 2));
+            uint valueInum = BinaryPrimitives.ReadUInt32LittleEndian(region.AsSpan(off + 4, 4));
+            uint valueSize = BinaryPrimitives.ReadUInt32LittleEndian(region.AsSpan(off + 8, 4));
+            if (off + 16 + nameLen > regionEnd) break;
+
+            string name = XattrFullName(nameIndex, Encoding.UTF8.GetString(region, off + 16, nameLen));
+            if (valueInum == 0 && valueSize > 0 && valueSize <= maxValueSize)
+            {
+                long valuePos = valueBase + valueOffs;
+                if (valuePos >= 0 && valuePos + valueSize <= region.Length)
+                {
+                    byte[] value = new byte[valueSize];
+                    Array.Copy(region, (int)valuePos, value, 0, (int)valueSize);
+                    result.Add(new Ext4Xattr { Name = name, Value = Convert.ToBase64String(value) });
+                }
+                else
+                {
+                    result.Add(new Ext4Xattr { Name = name, Value = string.Empty });
+                }
+            }
+            else
+            {
+                // external-inode 值（超大 xattr，ROM 中极罕见）：仅保留名称
+                result.Add(new Ext4Xattr { Name = name, Value = string.Empty });
+            }
+
+            off += (16 + nameLen + 3) & ~3;
+        }
+    }
+
+    /// <summary>将 xattr 命名空间索引转换为带前缀的完整名称。</summary>
+    private static string XattrFullName(byte index, string name) => index switch
+    {
+        1 => "user." + name,
+        2 => "system.posix_acl_access",
+        3 => "system.posix_acl_default",
+        4 => "trusted." + name,
+        5 => "lustre." + name,
+        6 => "security." + name,
+        7 => "system." + name,
+        8 => "system.richacl",
+        9 => name.Length == 0 ? "c" : "c." + name,
+        10 => "gnu." + name,
+        _ => name,
+    };
+
     /// <summary>目录条目。</summary>
     private sealed class DirEntry
     {
@@ -372,7 +498,7 @@ internal sealed class Ext4Reader : IDisposable
         return entries;
     }
 
-    /// <summary>将整个文件系统提取到目标目录。</summary>
+    /// <summary>将整个文件系统提取到目标目录，并导出元数据清单（.rom_metadata.json）。</summary>
     public void ExtractTo(string outputDir, IProgress<RomTaskProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         Directory.CreateDirectory(outputDir);
@@ -380,12 +506,29 @@ internal sealed class Ext4Reader : IDisposable
         var rootInode = ParseInode(ReadInode(2));
         if (!IsDirectory(rootInode)) throw new InvalidDataException("根 inode 不是目录。");
 
+        var metadata = new List<Ext4FileMeta>
+        {
+            new()
+            {
+                Path = ".",
+                Mode = rootInode.Mode,
+                Uid = rootInode.Uid,
+                Gid = rootInode.Gid,
+                Atime = rootInode.Atime,
+                Ctime = rootInode.Ctime,
+                Mtime = rootInode.Mtime,
+                Xattrs = ReadXattrs(rootInode),
+            },
+        };
+
         long totalEstimate = (long)BlockCount * BlockSize;
         long processed = 0;
-        ExtractDir(rootInode, outputDir, ref processed, totalEstimate, progress, cancellationToken);
+        ExtractDir(rootInode, outputDir, "", metadata, ref processed, totalEstimate, progress, cancellationToken);
+
+        Ext4Metadata.Save(outputDir, metadata);
     }
 
-    private void ExtractDir(InodeInfo dirInode, string targetDir, ref long processed, long totalEstimate, IProgress<RomTaskProgress>? progress, CancellationToken cancellationToken)
+    private void ExtractDir(InodeInfo dirInode, string targetDir, string relDir, List<Ext4FileMeta> metadata, ref long processed, long totalEstimate, IProgress<RomTaskProgress>? progress, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Directory.CreateDirectory(targetDir);
@@ -394,14 +537,29 @@ internal sealed class Ext4Reader : IDisposable
         foreach (var entry in entries)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            string path = Path.Combine(targetDir, SanitizeName(entry.Name));
+            string name = SanitizeName(entry.Name);
+            string path = Path.Combine(targetDir, name);
+            string relPath = relDir.Length == 0 ? name : relDir + "/" + name;
             var inode = ParseInode(ReadInode(entry.Inode));
+
+            var meta = new Ext4FileMeta
+            {
+                Path = relPath,
+                Mode = inode.Mode,
+                Uid = inode.Uid,
+                Gid = inode.Gid,
+                Atime = inode.Atime,
+                Ctime = inode.Ctime,
+                Mtime = inode.Mtime,
+                Rdev = inode.RdevRaw,
+                Xattrs = ReadXattrs(inode),
+            };
 
             try
             {
                 if (IsDirectory(inode))
                 {
-                    ExtractDir(inode, path, ref processed, totalEstimate, progress, cancellationToken);
+                    ExtractDir(inode, path, relPath, metadata, ref processed, totalEstimate, progress, cancellationToken);
                 }
                 else if (IsRegularFile(inode))
                 {
@@ -417,6 +575,7 @@ internal sealed class Ext4Reader : IDisposable
                 else if (IsSymlink(inode))
                 {
                     string target = ReadSymlink(inode);
+                    meta.SymlinkTarget = target;
                     CreateSymlink(path, target);
                 }
                 else
@@ -430,6 +589,7 @@ internal sealed class Ext4Reader : IDisposable
                 // 单个文件失败不影响整体
                 File.AppendAllText(Path.Combine(targetDir, ".rom_extract_errors.log"), $"{entry.Name}: {ex.Message}{Environment.NewLine}");
             }
+            metadata.Add(meta);
         }
     }
 

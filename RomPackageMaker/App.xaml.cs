@@ -19,45 +19,41 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+        // 记录未处理异常，便于诊断（写入 %TEMP%\rompkg_crash.log）
         UnhandledException += (s, e) =>
         {
-            File.WriteAllText(Path.Combine(Path.GetTempPath(), "rompkg_crash.log"), e.Exception.ToString());
-            e.Handled = false;
+            try
+            {
+                File.WriteAllText(Path.Combine(Path.GetTempPath(), "rompkg_crash.log"),
+                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}{e.Exception}");
+            }
+            catch { /* 忽略日志写入失败 */ }
         };
-        // 启动时应用保存的主题
-        ApplyTheme(AppSettings.Current.Theme);
     }
 
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
-        try
-        {
-            _window = new MainWindow();
-            MainWindow = _window;
-            _window.Activate();
-        }
-        catch (Exception ex)
-        {
-            File.WriteAllText(Path.Combine(Path.GetTempPath(), "rompkg_crash.log"), ex.ToString());
-            throw;
-        }
+        _window = new MainWindow();
+        MainWindow = _window;
+
+        // 任务队列服务的 UI 线程调度（状态/进度通知回 UI 线程）
+        var dispatcher = _window.DispatcherQueue;
+        TaskQueueService.Instance.UiMarshal = action => dispatcher.TryEnqueue(() => action());
+
+        _window.Activate();
     }
 
-    /// <summary>切换应用主题：system / light / dark。</summary>
+    /// <summary>切换应用主题：system / light / dark。窗口存在时即时生效。</summary>
     public void ApplyTheme(string theme)
     {
-        var root = _window?.Content as FrameworkElement;
-        if (root is null)
+        if (_window?.Content is FrameworkElement root)
         {
-            // 窗口尚未创建，存到资源中稍后应用
-            Resources["RequestedThemeOverride"] = theme;
-            return;
+            root.RequestedTheme = theme switch
+            {
+                "light" => ElementTheme.Light,
+                "dark" => ElementTheme.Dark,
+                _ => ElementTheme.Default,
+            };
         }
-        root.RequestedTheme = theme switch
-        {
-            "light" => ElementTheme.Light,
-            "dark" => ElementTheme.Dark,
-            _ => ElementTheme.Default,
-        };
     }
 }

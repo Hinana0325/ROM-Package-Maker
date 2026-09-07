@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="RomPackageMaker.Pages.DiffPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:RomPackageMaker.Pages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:services="using:RomPackageMaker.Services"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <local:PropKindToSignConverter x:Key="PropKindToSignConverter" />
+        <local:PropKindToBrushConverter x:Key="PropKindToBrushConverter" />
+    </Page.Resources>
+
+    <Grid Padding="24,16,24,16" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="版本对比" />
+
+        <!-- 目录选择 -->
+        <StackPanel Grid.Row="1" Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBox
+                    x:Name="OldBox"
+                    Width="440"
+                    Header="旧版本工作目录"
+                    IsReadOnly="True"
+                    PlaceholderText="选择旧版解包目录" />
+                <Button
+                    x:Name="BrowseOldButton"
+                    VerticalAlignment="Bottom"
+                    Click="BrowseOldButton_Click"
+                    Content="浏览..." />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBox
+                    x:Name="NewBox"
+                    Width="440"
+                    Header="新版本工作目录"
+                    IsReadOnly="True"
+                    PlaceholderText="选择新版解包目录" />
+                <Button
+                    x:Name="BrowseNewButton"
+                    VerticalAlignment="Bottom"
+                    Click="BrowseNewButton_Click"
+                    Content="浏览..." />
+                <Button
+                    x:Name="CompareButton"
+                    VerticalAlignment="Bottom"
+                    Click="CompareButton_Click"
+                    Content="开始对比"
+                    Style="{StaticResource AccentButtonStyle}" />
+            </StackPanel>
+        </StackPanel>
+
+        <TextBlock
+            x:Name="SummaryText"
+            Grid.Row="2"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            Style="{StaticResource CaptionTextBlockStyle}"
+            Text="对比两个解包工作区（如同一 ROM 的新旧版本），汇总应用增删、build.prop 属性变化与分区大小变化。" />
+
+        <ScrollViewer Grid.Row="3">
+            <StackPanel Spacing="12" Margin="0,0,12,8">
+                <!-- 应用变化 -->
+                <Border
+                    x:Name="AppsCard"
+                    Padding="16"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Visibility="Collapsed">
+                    <StackPanel Spacing="8">
+                        <TextBlock FontWeight="SemiBold" Style="{StaticResource SubtitleTextBlockStyle}" Text="应用变化" />
+                        <TextBlock
+                            x:Name="AddedAppsHeader"
+                            Foreground="#4CAF50"
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            Text="＋ 新增应用" />
+                        <ListView x:Name="AddedAppsList" MaxHeight="160" SelectionMode="None">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="MinHeight" Value="0" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="services:AppDiff">
+                                    <Grid
+                                        Padding="12,5,12,5"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="0,0,0,1"
+                                        ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock
+                                            Width="24"
+                                            Foreground="#4CAF50"
+                                            Text="＋" />
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            FontWeight="SemiBold"
+                                            Text="{x:Bind RelPath}"
+                                            TextTrimming="CharacterEllipsis"
+                                            ToolTipService.ToolTip="{x:Bind RelPath}" />
+                                        <TextBlock
+                                            Grid.Column="2"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Text="{x:Bind LocationText}" />
+                                        <TextBlock
+                                            Grid.Column="3"
+                                            FontFamily="Consolas"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Text="{x:Bind SizeText}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                        <TextBlock
+                            x:Name="RemovedAppsHeader"
+                            Foreground="#E53935"
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            Text="－ 移除应用" />
+                        <ListView x:Name="RemovedAppsList" MaxHeight="160" SelectionMode="None">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="MinHeight" Value="0" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="services:AppDiff">
+                                    <Grid
+                                        Padding="12,5,12,5"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="0,0,0,1"
+                                        ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock
+                                            Width="24"
+                                            Foreground="#E53935"
+                                            Text="－" />
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            FontWeight="SemiBold"
+                                            Text="{x:Bind RelPath}"
+                                            TextTrimming="CharacterEllipsis"
+                                            ToolTipService.ToolTip="{x:Bind RelPath}" />
+                                        <TextBlock
+                                            Grid.Column="2"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Text="{x:Bind LocationText}" />
+                                        <TextBlock
+                                            Grid.Column="3"
+                                            FontFamily="Consolas"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Text="{x:Bind SizeText}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </StackPanel>
+                </Border>
+
+                <!-- 属性变化 -->
+                <Border
+                    x:Name="PropsCard"
+                    Padding="16"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Visibility="Collapsed">
+                    <StackPanel Spacing="8">
+                        <TextBlock FontWeight="SemiBold" Style="{StaticResource SubtitleTextBlockStyle}" Text="build.prop 属性变化" />
+                        <ListView x:Name="PropsList" MaxHeight="260" SelectionMode="None">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="MinHeight" Value="0" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="services:PropDiff">
+                                    <Grid
+                                        Padding="12,5,12,5"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="0,0,0,1"
+                                        ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="260" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock
+                                            Width="24"
+                                            Foreground="{x:Bind Kind, Converter={StaticResource PropKindToBrushConverter}, Mode=OneTime}"
+                                            Text="{x:Bind Kind, Converter={StaticResource PropKindToSignConverter}, Mode=OneTime}" />
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            FontFamily="Consolas"
+                                            Text="{x:Bind Key}"
+                                            TextTrimming="CharacterEllipsis"
+                                            ToolTipService.ToolTip="{x:Bind Key}" />
+                                        <TextBlock
+                                            Grid.Column="2"
+                                            FontFamily="Consolas"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Text="{x:Bind OldText}"
+                                            TextTrimming="CharacterEllipsis"
+                                            ToolTipService.ToolTip="{x:Bind OldText}" />
+                                        <TextBlock Grid.Column="3" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="→" />
+                                        <TextBlock
+                                            Grid.Column="4"
+                                            FontFamily="Consolas"
+                                            Text="{x:Bind NewText}"
+                                            TextTrimming="CharacterEllipsis"
+                                            ToolTipService.ToolTip="{x:Bind NewText}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </StackPanel>
+                </Border>
+
+                <!-- 分区大小变化 -->
+                <Border
+                    x:Name="PartitionsCard"
+                    Padding="16"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Visibility="Collapsed">
+                    <StackPanel Spacing="8">
+                        <TextBlock FontWeight="SemiBold" Style="{StaticResource SubtitleTextBlockStyle}" Text="分区大小变化（解包目录实际占用）" />
+                        <ListView x:Name="PartitionsList" MaxHeight="180" SelectionMode="None">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="MinHeight" Value="0" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="services:PartitionDiff">
+                                    <Grid
+                                        Padding="12,5,12,5"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="0,0,0,1"
+                                        ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="140" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock FontWeight="SemiBold" Text="{x:Bind Name}" />
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            FontFamily="Consolas"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Text="{x:Bind OldSizeText}" />
+                                        <TextBlock Grid.Column="2" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="→" />
+                                        <TextBlock Grid.Column="3" FontFamily="Consolas" Text="{x:Bind NewSizeText}" />
+                                        <TextBlock
+                                            Grid.Column="4"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Text="{x:Bind ChangeText}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

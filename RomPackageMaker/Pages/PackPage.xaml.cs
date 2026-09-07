@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 using RomPackageMaker.Services;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
@@ -11,15 +12,32 @@ public sealed partial class PackPage : Page
 {
     private readonly IRomPackService _romService = new RomPackService();
     private CancellationTokenSource? _cts;
+    private bool _userTouchedWorkspace;
 
     public PackPage()
     {
         InitializeComponent();
+        // 缓存页面：切换导航后保留已选路径、进度与日志
+        NavigationCacheMode = NavigationCacheMode.Required;
         var s = AppSettings.Current;
         if (!string.IsNullOrEmpty(s.DefaultWorkspace)) WorkspaceBox.Text = s.DefaultWorkspace;
         if (!string.IsNullOrEmpty(s.DefaultOutputDir)) OutputPathBox.Text = Path.Combine(s.DefaultOutputDir, "new_rom.zip");
         DragOver += PackPage_DragOver;
         Drop += PackPage_Drop;
+    }
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        // 未手动选择过工作目录时，跟随会话最近使用的工作目录（如刚解包的那个）
+        if (!_userTouchedWorkspace)
+        {
+            string? ws = WorkspaceState.CurrentWorkspace ?? AppSettings.Current.DefaultWorkspace;
+            if (!string.IsNullOrEmpty(ws) && Directory.Exists(ws) && WorkspaceBox.Text != ws)
+            {
+                WorkspaceBox.Text = ws;
+            }
+        }
     }
 
     private static void InitializePicker(object picker)
@@ -36,7 +54,12 @@ public sealed partial class PackPage : Page
         picker.FileTypeFilter.Add("*");
         InitializePicker(picker);
         var folder = await picker.PickSingleFolderAsync();
-        if (folder is not null) WorkspaceBox.Text = folder.Path;
+        if (folder is not null)
+        {
+            WorkspaceBox.Text = folder.Path;
+            _userTouchedWorkspace = true;
+            WorkspaceState.CurrentWorkspace = folder.Path;
+        }
     }
 
     private async void BrowseOutputButton_Click(object sender, RoutedEventArgs e)
@@ -63,6 +86,8 @@ public sealed partial class PackPage : Page
         if (items[0] is StorageFolder folder)
         {
             WorkspaceBox.Text = folder.Path;
+            _userTouchedWorkspace = true;
+            WorkspaceState.CurrentWorkspace = folder.Path;
         }
         else if (items[0] is StorageFile file)
         {
@@ -75,6 +100,14 @@ public sealed partial class PackPage : Page
         if (string.IsNullOrWhiteSpace(WorkspaceBox.Text) || string.IsNullOrWhiteSpace(OutputPathBox.Text))
         {
             AppendLog("请先选择工作目录和输出文件。");
+            return;
+        }
+
+        // 打包前防呆检查（后台执行，不卡 UI）
+        var issues = await Task.Run(() => PackPreflightService.RunChecks(WorkspaceBox.Text, OutputPathBox.Text));
+        if (issues.Count > 0 && !await ConfirmPreflightAsync(issues))
+        {
+            AppendLog("已取消打包（预检未通过）。");
             return;
         }
 
@@ -91,6 +124,17 @@ public sealed partial class PackPage : Page
         {
             await _romService.PackAsync(WorkspaceBox.Text, OutputPathBox.Text, progress, _cts.Token, sign: SignCheckBox.IsChecked == true);
             AppendLog($"打包完成：{OutputPathBox.Text}");
+
+            // 顺带生成 fastboot 刷机脚本（按解包清单）
+            try
+            {
+                string? script = await Task.Run(() => PackPreflightService.GenerateFastbootScript(WorkspaceBox.Text, OutputPathBox.Text));
+                if (script is not null) AppendLog($"已生成刷机脚本：{script}");
+            }
+            catch
+            {
+                /* 脚本生成失败不影响打包结果 */
+            }
             if (AppSettings.Current.OpenOutputAfterPack)
             {
                 try
@@ -118,6 +162,49 @@ public sealed partial class PackPage : Page
             _cts = null;
             SetBusy(false);
         }
+    }
+
+    /// <summary>预检问题确认对话框：错误红 / 警告橙 / 提示灰。返回用户是否选择继续。</summary>
+    private async Task<bool> ConfirmPreflightAsync(List<PreflightIssue> issues)
+    {
+        var panel = new StackPanel { Spacing = 6 };
+        panel.Children.Add(new TextBlock
+        {
+            Text = $"打包前检查发现 {issues.Count} 个问题：",
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+        });
+        foreach (var issue in issues)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = issue.Level switch
+                {
+                    PreflightLevel.Error => "✗ ",
+                    PreflightLevel.Warn => "⚠ ",
+                    _ => "ℹ ",
+                } + issue.Message,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(issue.Level switch
+                {
+                    PreflightLevel.Error => Microsoft.UI.Colors.Red,
+                    PreflightLevel.Warn => Microsoft.UI.Colors.Orange,
+                    _ => Microsoft.UI.Colors.Gray,
+                }),
+            });
+        }
+
+        var dlg = new ContentDialog
+        {
+            Title = "打包前检查",
+            Content = new ScrollViewer { MaxHeight = 320, Content = panel },
+            PrimaryButtonText = issues.Any(i => i.Level == PreflightLevel.Error) ? "仍要打包" : "继续打包",
+            CloseButtonText = "取消",
+            DefaultButton = issues.Any(i => i.Level == PreflightLevel.Error)
+                ? ContentDialogButton.Close
+                : ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+        return await dlg.ShowAsync() == ContentDialogResult.Primary;
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e)
