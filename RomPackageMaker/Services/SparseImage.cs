@@ -77,18 +77,30 @@ internal static class SparseImage
                         if (input.Read(fillBuf, 0, 4) != 4) throw new EndOfStreamException();
                         // 将 4 字节填充值扩展到整个块
                         for (int b = 4; b < blkSz; b++) fillBuf[b] = fillBuf[b & 3];
-                        for (uint b = 0; b < chunkSz; b++)
+                        long fillRemain = chunkSz * (long)blkSz;
+                        while (fillRemain > 0)
                         {
-                            output.Write(fillBuf, 0, (int)blkSz);
+                            int n = (int)Math.Min(fillRemain, fillBuf.Length);
+                            output.Write(fillBuf, 0, n);
+                            fillRemain -= n;
                         }
                         outputBytes += chunkSz * (long)blkSz;
                     }
                     break;
 
                 case ChunkTypeDontCare:
-                    // 写零
-                    output.Write(new byte[chunkSz * (long)blkSz]);
-                    outputBytes += chunkSz * (long)blkSz;
+                    {
+                        // 写零（分块进行：真机镜像单个 don't-care chunk 可达数 GiB，一次性分配必然失败）
+                        long zeroRemain = chunkSz * (long)blkSz;
+                        var zeroBuf = new byte[Math.Min(zeroRemain, 1024 * 1024)];
+                        while (zeroRemain > 0)
+                        {
+                            int n = (int)Math.Min(zeroRemain, zeroBuf.Length);
+                            output.Write(zeroBuf, 0, n);
+                            zeroRemain -= n;
+                        }
+                        outputBytes += chunkSz * (long)blkSz;
+                    }
                     break;
 
                 case ChunkTypeCrc32:

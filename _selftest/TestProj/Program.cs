@@ -893,7 +893,170 @@ using (var fs = File.OpenRead(superImg))
     Check("super parse: magic", SuperImage.IsSuperImage(fs));
 }
 
+// --- BootImage v4 真实字节位置规范符合性（堵住「自产自销」盲区） ---
+{
+    string bootV4 = Path.Combine(root, "boot_v4_spec.img");
+    var bootV4Info = new BootImage.BootInfo
+    {
+        HeaderVersion = 4,
+        PageSize = 2048,
+        Kernel = new byte[8192],
+        SignatureSize = 256,
+    };
+    bootV4Info.KernelSize = (uint)bootV4Info.Kernel.Length;
+    using (var fs = File.Create(bootV4)) BootImage.Write(bootV4Info, fs);
+    using (var sr = File.OpenRead(bootV4))
+    {
+        var raw = new byte[4096];
+        sr.ReadExactly(raw, 0, 4096);
+        // header_size@20 必须 = 1584 (v4 规范)
+        Check("boot v4 spec: header_size@20 = 1584", BitConverter.ToUInt32(raw, 20) == 1584);
+        // reserved@24..39 必须为 0
+        bool reservedZero = true;
+        for (int i = 24; i < 40; i++) if (raw[i] != 0) { reservedZero = false; break; }
+        Check("boot v4 spec: reserved@24..39 zero", reservedZero);
+        // header_version@40 必须 = 4
+        Check("boot v4 spec: header_version@40 = 4", BitConverter.ToUInt32(raw, 40) == 4);
+        // cmdline@44 起始
+        Check("boot v4 spec: cmdline@44 first byte = 0", raw[44] == 0);
+        // signature_size@1580 必须 = 256
+        Check("boot v4 spec: signature_size@1580 = 256", BitConverter.ToUInt32(raw, 1580) == 256);
+    }
+}
+
+// --- vendor_boot v4 真实字节位置规范符合性（重点：2112/2128 常量与字段偏移） ---
+{
+    string vbootV4 = Path.Combine(root, "vboot_v4_spec.img");
+    var vbootV4Info = new BootImage.BootInfo
+    {
+        IsVendorBoot = true,
+        HeaderVersion = 4,
+        PageSize = 4096,
+        VendorRamdiskSize = 4096,
+        VendorRamdisk = new byte[4096],
+        KernelAddr = 0x8000,
+        RamdiskAddr = 0x1000000,
+        TagsAddr = 0x100,
+        Name = "vboot_test",
+        Cmdline = "verbose",
+        VendorRamdiskTableSize = 108,
+        VendorRamdiskTableEntryNum = 1,
+        VendorRamdiskTableEntrySize = 108,
+        BootconfigSize = 270,
+    };
+    using (var fs = File.Create(vbootV4)) BootImage.Write(vbootV4Info, fs);
+    using (var sr = File.OpenRead(vbootV4))
+    {
+        var hdr = new byte[2128];
+        sr.ReadExactly(hdr, 0, 2128);
+        // 魔数
+        Check("vendor_boot v4 spec: magic = VNDRBOOT", System.Text.Encoding.ASCII.GetString(hdr, 0, 8) == "VNDRBOOT");
+        // header_version@8 = 4
+        Check("vendor_boot v4 spec: header_version@8 = 4", BitConverter.ToUInt32(hdr, 8) == 4);
+        // kernel_addr@16 = 0x8000
+        Check("vendor_boot v4 spec: kernel_addr@16 = 0x8000", BitConverter.ToUInt32(hdr, 16) == 0x8000);
+        // ramdisk_addr@20 = 0x1000000
+        Check("vendor_boot v4 spec: ramdisk_addr@20 = 0x1000000", BitConverter.ToUInt32(hdr, 20) == 0x1000000);
+        // cmdline@28[2048] 占满
+        Check("vendor_boot v4 spec: cmdline length = 2048", Encoding.ASCII.GetBytes(vbootV4Info.Cmdline)[0] == hdr[28]);
+        // tags_addr@2076 = 0x100
+        Check("vendor_boot v4 spec: tags_addr@2076 = 0x100", BitConverter.ToUInt32(hdr, 2076) == 0x100);
+        // name@2080 = "vboot_test"
+        Check("vendor_boot v4 spec: name@2080", Encoding.ASCII.GetString(hdr, 2080, 10) == "vboot_test");
+        // header_size@2096 = 2128 (v4!)
+        Check("vendor_boot v4 spec: header_size@2096 = 2128", BitConverter.ToUInt32(hdr, 2096) == 2128);
+        // v4 附加字段：2112/2116/2120/2124
+        Check("vendor_boot v4 spec: table_size@2112 = 108", BitConverter.ToUInt32(hdr, 2112) == 108);
+        Check("vendor_boot v4 spec: entry_num@2116 = 1", BitConverter.ToUInt32(hdr, 2116) == 1);
+        Check("vendor_boot v4 spec: entry_size@2120 = 108", BitConverter.ToUInt32(hdr, 2120) == 108);
+        Check("vendor_boot v4 spec: bootconfig_size@2124 = 270", BitConverter.ToUInt32(hdr, 2124) == 270);
+    }
+    // vendor_boot v4 完整往返
+    using (var sr = File.OpenRead(vbootV4))
+    {
+        var rt = BootImage.Parse(sr);
+        Check("vendor_boot v4 rt: kernel_addr", rt.KernelAddr == 0x8000);
+        Check("vendor_boot v4 rt: tags_addr", rt.TagsAddr == 0x100);
+        Check("vendor_boot v4 rt: name", rt.Name == "vboot_test");
+        Check("vendor_boot v4 rt: bootconfig_size", rt.BootconfigSize == 270);
+        Check("vendor_boot v4 rt: table_size", rt.VendorRamdiskTableSize == 108);
+    }
+}
+
+// --- SparseImage don't-care 大块：必须不抛 OverflowException（旧实现 new byte[2.29GiB] 会 OOM） ---
+{
+    // 构造 600,000 块 × 4096 = 2.29 GiB（> 2 GiB 数组上限，旧 new byte[2.29G] 必抛异常）
+    using var sparse = new MemoryStream();
+    sparse.Write(new byte[] {
+        0x3A, 0xFF, 0x26, 0xED,  // 0-3: magic (u32)
+        0x01, 0x00,              // 4-5: major (u16)
+        0x00, 0x00,              // 6-7: minor (u16)
+        0x1C, 0x00,              // 8-9: file_hdr_sz = 28 (u16)
+        0x0C, 0x00,              // 10-11: chunk_hdr_sz = 12 (u16)
+        0x00, 0x10, 0x00, 0x00,  // 12-15: blk_sz = 4096 (u32)
+        0xC0, 0x27, 0x09, 0x00,  // 16-19: total_blks = 600,000 (u32)  (2.29 GiB)
+        0x01, 0x00, 0x00, 0x00,  // 20-23: total_chunks = 1 (u32)
+        0x00, 0x00, 0x00, 0x00,  // 24-27: checksum (u32)
+    });
+    sparse.Write(new byte[] {
+        0xC3, 0xCA,              // 0-1: chunk_type = 0xCAC3 don't-care
+        0x00, 0x00,              // 2-3: reserved
+        0xC0, 0x27, 0x09, 0x00,  // 4-7: chunk_blocks = 600,000
+        0x0C, 0x00, 0x00, 0x00,  // 8-11: total_sz = 12
+    });
+    sparse.Position = 0;
+    using var expanded = new CountingStream();
+    bool threwOverflow = false;
+    try { SparseImage.Unsparse(sparse, expanded); }
+    catch (OverflowException) { threwOverflow = true; }
+    Check("sparse 2.29GiB don't-care: no OverflowException", !threwOverflow);
+    long expected = 600000L * 4096L;
+    Check("sparse 2.29GiB don't-care: expanded bytes = 2.29 GiB", expanded.Bytes == expected);
+    // 再补一个 chunk_blocks=1 的 fill 测试，确保 Fill 路径在 chunk 块数为 1 时也正常
+    using (var s2 = new MemoryStream())
+    {
+        s2.Write(new byte[] {
+            0x3A, 0xFF, 0x26, 0xED,  // magic
+            0x01, 0x00,              // major=1
+            0x00, 0x00,              // minor=0
+            0x1C, 0x00,              // file_hdr_sz=28
+            0x0C, 0x00,              // chunk_hdr_sz=12
+            0x00, 0x10, 0x00, 0x00,  // blk_sz=4096
+            0x01, 0x00, 0x00, 0x00,  // total_blks=1
+            0x01, 0x00, 0x00, 0x00,  // total_chunks=1
+            0x00, 0x00, 0x00, 0x00,  // checksum
+        });
+        s2.Write(new byte[] {
+            0xC1, 0xCA,              // raw
+            0x00, 0x00,
+            0x01, 0x00, 0x00, 0x00,  // chunk_blocks=1
+            0x0C, 0x10, 0x00, 0x00,  // total_sz=12+4096=4108
+        });
+        s2.Write(new byte[4096]); // 数据 4096 字节零
+        s2.Position = 0;
+        using var e2 = new CountingStream();
+        SparseImage.Unsparse(s2, e2);
+        Check("sparse 1-block raw: expanded bytes = 4096", e2.Bytes == 4096);
+    }
+}
+
 Directory.Delete(root, true);
 
 Console.WriteLine(fail == 0 ? "ALL PASS" : $"{fail} FAILED");
 Environment.Exit(fail);
+
+/// <summary>不分配内存的写入计数流（仅用于验证 sparse 解包的字节输出量）。</summary>
+internal sealed class CountingStream : Stream
+{
+    public long Bytes { get; private set; }
+    public override bool CanRead => false;
+    public override bool CanSeek => false;
+    public override bool CanWrite => true;
+    public override long Length => Bytes;
+    public override long Position { get => Bytes; set => throw new NotSupportedException(); }
+    public override void Write(byte[] buffer, int offset, int count) => Bytes += count;
+    public override int Read(byte[] buffer, int offset, int count) => 0;
+    public override long Seek(long offset, SeekOrigin origin) => 0;
+    public override void Flush() { }
+    public override void SetLength(long value) { }
+}

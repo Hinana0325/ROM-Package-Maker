@@ -80,3 +80,5 @@ $RECYCLE.BIN/
 RomPackageMaker/Assets/_masters/
 RomPackageMaker/Assets/AppIconNew.jpg
 RomPackageMaker/Assets/AppIconNew.png
+_realtest/bin/
+_realtest/obj/
