@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="RomPackageMaker.Pages.TemplatePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:RomPackageMaker.Pages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:services="using:RomPackageMaker.Services"
+    mc:Ignorable="d">
+
+    <Grid Padding="24,16,24,16" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="定制模板" />
+
+        <!-- 工具栏 -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+            <Button Click="NewButton_Click" Content="新建模板" />
+            <Button
+                Click="SaveButton_Click"
+                Content="保存"
+                Style="{StaticResource AccentButtonStyle}" />
+            <Button Click="ApplyButton_Click" Content="应用到工作目录" />
+            <Button Click="DeleteButton_Click" Content="删除模板" />
+        </StackPanel>
+
+        <!-- 模板列表 -->
+        <Border
+            Grid.Row="2"
+            Padding="4"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+            <ListView
+                x:Name="TemplateList"
+                MaxHeight="120"
+                SelectionChanged="TemplateList_SelectionChanged">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="services:RomTemplate">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock FontWeight="SemiBold" Text="{x:Bind Name}" />
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{x:Bind Description}"
+                                TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Border>
+
+        <!-- 编辑器 -->
+        <ScrollViewer Grid.Row="3">
+            <StackPanel MaxWidth="760" Spacing="12">
+                <!-- 基本信息 -->
+                <Border
+                    Padding="12"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBox x:Name="NameBox" Width="260" Header="模板名称" />
+                            <TextBox
+                                x:Name="DescBox"
+                                Width="440"
+                                Header="说明（可选）"
+                                PlaceholderText="如：我的日常定制方案" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- build.prop 覆盖 -->
+                <Border
+                    Padding="12"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock VerticalAlignment="Center" Style="{StaticResource SubtitleTextBlockStyle}" Text="build.prop 属性覆盖" />
+                            <Button Click="AddProp_Click" Content="添加" />
+                        </StackPanel>
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="应用模板时：属性存在则修改，不存在则追加（优先写入 system 分区的 build.prop）。" />
+                        <Grid Padding="12,0,12,4" ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="属性键" />
+                            <TextBlock
+                                Grid.Column="1"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="值" />
+                        </Grid>
+                        <ListView
+                            x:Name="PropList"
+                            ItemsSource="{x:Bind PropOverrides, Mode=OneWay}"
+                            SelectionMode="None">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="MinHeight" Value="0" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="services:TemplatePropOverride">
+                                    <Grid Padding="12,2,12,2" ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox
+                                            FontFamily="Consolas"
+                                            PlaceholderText="ro.product.model"
+                                            Text="{x:Bind Key, Mode=TwoWay}" />
+                                        <TextBox
+                                            Grid.Column="1"
+                                            FontFamily="Consolas"
+                                            PlaceholderText="值"
+                                            Text="{x:Bind Value, Mode=TwoWay}" />
+                                        <Button
+                                            Grid.Column="2"
+                                            Padding="8,6"
+                                            Click="RemoveProp_Click"
+                                            Content="&#xE74D;"
+                                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                            ToolTipService.ToolTip="移除该行" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </StackPanel>
+                </Border>
+
+                <!-- 精简列表 -->
+                <Border
+                    Padding="12"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock VerticalAlignment="Center" Style="{StaticResource SubtitleTextBlockStyle}" Text="预装应用精简清单" />
+                            <Button Click="AddApp_Click" Content="添加" />
+                        </StackPanel>
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="填写应用目录名或 APK 文件名（如 Browser、YouTube），应用模板时按名称在工作目录中匹配并删除。" />
+                        <ListView
+                            x:Name="AppList"
+                            ItemsSource="{x:Bind RemoveAppItems, Mode=OneWay}"
+                            SelectionMode="None">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="MinHeight" Value="0" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="services:TemplateTextItem">
+                                    <Grid Padding="12,2,12,2" ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox PlaceholderText="应用名，如 Browser" Text="{x:Bind Text, Mode=TwoWay}" />
+                                        <Button
+                                            Grid.Column="1"
+                                            Padding="8,6"
+                                            Click="RemoveApp_Click"
+                                            Content="&#xE74D;"
+                                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                            ToolTipService.ToolTip="移除该行" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </StackPanel>
+                </Border>
+
+                <!-- ROOT 集成 -->
+                <Border
+                    Padding="12"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="8">
+                        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="ROOT 集成" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock VerticalAlignment="Center" Text="模式：" />
+                            <ComboBox x:Name="RootModeCombo" Width="260" SelectedIndex="0">
+                                <ComboBoxItem Content="不集成" Tag="none" />
+                                <ComboBoxItem Content="替换已修补的 boot.img" Tag="replace-boot" />
+                                <ComboBoxItem Content="内置 Magisk 管理器" Tag="magisk-system" />
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBox
+                                x:Name="RootSourceBox"
+                                Width="440"
+                                IsReadOnly="True"
+                                PlaceholderText="已修补的 boot.img 或 Magisk.apk 路径" />
+                            <Button Click="BrowseRootSource_Click" Content="浏览..." />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock VerticalAlignment="Center" Text="目标分区：" />
+                            <ComboBox x:Name="RootPartCombo" Width="220" SelectedIndex="0">
+                                <ComboBoxItem Content="boot（默认）" Tag="boot" />
+                                <ComboBoxItem Content="init_boot（GKI 新设备）" Tag="init_boot" />
+                                <ComboBoxItem Content="vendor_boot" Tag="vendor_boot" />
+                            </ComboBox>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

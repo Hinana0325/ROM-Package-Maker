@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="RomPackageMaker.Pages.RootPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:RomPackageMaker.Pages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer Padding="24,16,24,16">
+        <StackPanel MaxWidth="720" Spacing="16">
+            <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="ROOT 集成" />
+
+            <!-- 工作目录 -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBox
+                    x:Name="WorkspaceBox"
+                    Width="440"
+                    Header="工作目录（解包产物所在目录）"
+                    IsReadOnly="True"
+                    PlaceholderText="选择解包工作目录" />
+                <Button
+                    VerticalAlignment="Bottom"
+                    Click="BrowseWorkspaceButton_Click"
+                    Content="浏览..." />
+                <Button
+                    VerticalAlignment="Bottom"
+                    Click="RefreshButton_Click"
+                    Content="刷新" />
+            </StackPanel>
+
+            <!-- 检测到的 boot 分区 -->
+            <Border
+                Padding="12"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="6">
+                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="工作区状态" />
+                    <TextBlock
+                        x:Name="DetectText"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap"
+                        Text="尚未检测。" />
+                </StackPanel>
+            </Border>
+
+            <!-- 模式 1：替换 boot.img -->
+            <Border
+                Padding="12"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="8">
+                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="方式一：使用已修补的 boot.img（推荐）" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap"
+                        Text="用 Magisk / KernelSU 官方应用在设备上修补出 boot.img 后，在此替换进 ROM。打包时将直接使用该镜像（跳过重建）。" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox
+                            x:Name="PatchedBootBox"
+                            Width="440"
+                            IsReadOnly="True"
+                            PlaceholderText="选择已修补的 boot.img" />
+                        <Button Click="BrowsePatchedBoot_Click" Content="浏览..." />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock VerticalAlignment="Center" Text="目标分区：" />
+                        <ComboBox x:Name="BootPartCombo" Width="220">
+                            <ComboBoxItem Content="boot（默认）" Tag="boot" />
+                            <ComboBoxItem Content="init_boot（GKI 新设备）" Tag="init_boot" />
+                            <ComboBoxItem Content="vendor_boot" Tag="vendor_boot" />
+                        </ComboBox>
+                        <Button
+                            x:Name="ApplyReplaceButton"
+                            Click="ApplyReplaceBoot_Click"
+                            Content="替换"
+                            Style="{StaticResource AccentButtonStyle}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 模式 2：内置 Magisk 管理器 -->
+            <Border
+                Padding="12"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="8">
+                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="方式二：内置 Magisk 管理器到系统" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap"
+                        Text="将 Magisk APK 内置为 system/priv-app/Magisk/Magisk.apk（预装管理器）。注意：这只是预装管理器，root 本身仍需配合方式一的已修补 boot.img。" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox
+                            x:Name="MagiskApkBox"
+                            Width="440"
+                            IsReadOnly="True"
+                            PlaceholderText="选择 Magisk.apk" />
+                        <Button Click="BrowseMagisk_Click" Content="浏览..." />
+                        <Button
+                            x:Name="ApplyMagiskButton"
+                            Click="ApplyMagisk_Click"
+                            Content="内置"
+                            Style="{StaticResource AccentButtonStyle}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <TextBlock
+                x:Name="StatusText"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                TextWrapping="Wrap"
+                Text="" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>

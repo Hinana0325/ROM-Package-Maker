@@ -1,0 +1,84 @@
+# ===== .NET / Visual Studio =====
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+artifacts/
+
+# 构建日志
+[Ll]og/
+[Ll]ogs/
+*.log
+*.binlog
+
+# 测试结果
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+
+# ===== NuGet =====
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+project.lock.json
+
+# ===== MSIX 打包输出 =====
+AppPackages/
+BundleArtifacts/
+*.msix
+*.msixupload
+*.appx
+*.appxbundle
+*.appxupload
+*.pfx
+*.cer
+
+# ===== 签名密钥（严禁入库）=====
+*.pk8
+*.pem
+*.key
+*.keystore
+
+# 发布输出
+publish/
+PublishScripts/
+
+# ===== 代码分析与工具 =====
+_ReSharper*/
+*.DotSettings.user
+*.dotCover
+.idea/
+.vscode/
+*.swp
+
+# 生成文件
+Generated\ Files/
+*_wpftmp.csproj
+
+# ===== ROM 工作目录（避免误提交大体积镜像/刷机包）=====
+*.img
+*.super
+workspace/
+output/
+
+# ===== 系统文件 =====
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# 临时文件与素材
+.workbuddy/
+RomPackageMaker/Assets/_masters/
+RomPackageMaker/Assets/AppIconNew.jpg
+RomPackageMaker/Assets/AppIconNew.png
+_realtest/bin/
+_realtest/obj/

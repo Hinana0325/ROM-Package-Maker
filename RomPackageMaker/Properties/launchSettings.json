@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "RomPackageMaker (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "RomPackageMaker (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
