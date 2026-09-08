@@ -46,7 +46,7 @@
                         <FontIcon Glyph="&#xE80F;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItemHeader Content="ROM 工具" />
+                <NavigationViewItemHeader Content="工具" />
                 <NavigationViewItem Content="信息总览" Tag="info">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE9D9;" />

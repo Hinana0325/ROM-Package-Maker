@@ -9,14 +9,130 @@
     mc:Ignorable="d">
 
     <ScrollViewer Padding="24,16,24,16">
-        <StackPanel MaxWidth="960" Spacing="20">
-            <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="ROM 制作工具" />
-            <TextBlock
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Text="Android ROM 解包、定制与打包的本地化工作台。内置 ext4 / sparse / boot.img / super 动态分区解析与重打包引擎，支持刷机包 zip 签名。" />
+        <StackPanel MaxWidth="960" Spacing="16">
 
-            <TextBlock Margin="0,8,0,0" Style="{StaticResource SubtitleTextBlockStyle}" Text="工作流程" />
+            <!-- 标题 -->
+            <StackPanel Spacing="4">
+                <TextBlock Style="{StaticResource PageHeaderTextBlockStyle}" Text="ROM 制作工具" />
+                <TextBlock
+                    Style="{StaticResource PageDescriptionTextBlockStyle}"
+                    Text="Android ROM 解包、定制与打包的本地化工作台。内置 ext4 / sparse / boot.img / super 动态分区解析与重打包引擎，支持刷机包 zip 签名。" />
+            </StackPanel>
 
+            <!-- 工作区状态 -->
+            <Border Padding="12" Style="{StaticResource CardBorderStyle}">
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon
+                        x:Name="WorkspaceStatusIcon"
+                        VerticalAlignment="Center"
+                        FontSize="16"
+                        Glyph="&#xE8B7;" />
+                    <TextBlock
+                        x:Name="WorkspaceStatusText"
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource BodyTextBlockStyle}"
+                        Text="尚未选择工作目录。解包 ROM 后，各定制页面会自动跟随。"
+                        TextTrimming="CharacterEllipsis" />
+                    <Button
+                        x:Name="OpenWorkspaceButton"
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Click="OpenWorkspaceButton_Click"
+                        Content="打开目录"
+                        Style="{StaticResource ToolbarButtonStyle}"
+                        Visibility="Collapsed" />
+                </Grid>
+            </Border>
+
+            <!-- 快速操作 -->
+            <TextBlock Style="{StaticResource SectionHeaderTextBlockStyle}" Text="快速操作" />
+            <Grid ColumnSpacing="8" RowSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Button
+                    HorizontalAlignment="Stretch"
+                    Click="NavUnpack_Click"
+                    Style="{StaticResource CompactCardButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon FontSize="16" Glyph="&#xE8C8;" />
+                        <TextBlock Text="解包" />
+                    </StackPanel>
+                </Button>
+
+                <Button
+                    Grid.Column="1"
+                    HorizontalAlignment="Stretch"
+                    Click="NavPack_Click"
+                    Style="{StaticResource CompactCardButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon FontSize="16" Glyph="&#xE8EF;" />
+                        <TextBlock Text="打包" />
+                    </StackPanel>
+                </Button>
+
+                <Button
+                    Grid.Column="2"
+                    HorizontalAlignment="Stretch"
+                    Click="NavQueue_Click"
+                    Style="{StaticResource CompactCardButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon FontSize="16" Glyph="&#xE7A8;" />
+                        <TextBlock Text="任务队列" />
+                    </StackPanel>
+                </Button>
+
+                <Button
+                    Grid.Row="1"
+                    HorizontalAlignment="Stretch"
+                    Click="NavInfo_Click"
+                    Style="{StaticResource CompactCardButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon FontSize="16" Glyph="&#xE9D9;" />
+                        <TextBlock Text="信息总览" />
+                    </StackPanel>
+                </Button>
+
+                <Button
+                    Grid.Row="1"
+                    Grid.Column="1"
+                    HorizontalAlignment="Stretch"
+                    Click="NavBuildProp_Click"
+                    Style="{StaticResource CompactCardButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon FontSize="16" Glyph="&#xE70F;" />
+                        <TextBlock Text="定制 ROM" />
+                    </StackPanel>
+                </Button>
+
+                <Button
+                    Grid.Row="1"
+                    Grid.Column="2"
+                    HorizontalAlignment="Stretch"
+                    Click="NavTemplates_Click"
+                    Style="{StaticResource CompactCardButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon FontSize="16" Glyph="&#xE8FD;" />
+                        <TextBlock Text="定制模板" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- 工作流程 -->
+            <TextBlock Style="{StaticResource SectionHeaderTextBlockStyle}" Text="工作流程" />
             <StackPanel Orientation="Horizontal" Spacing="12">
                 <Border
                     Width="280"
@@ -67,6 +183,7 @@
                     </StackPanel>
                 </Border>
             </StackPanel>
+
         </StackPanel>
     </ScrollViewer>
 </Page>

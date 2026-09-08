@@ -18,7 +18,12 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="任务队列" />
+        <StackPanel Spacing="4">
+            <TextBlock Style="{StaticResource PageHeaderTextBlockStyle}" Text="任务队列" />
+            <TextBlock
+                Style="{StaticResource PageDescriptionTextBlockStyle}"
+                Text="解包 / 打包任务按加入顺序依次执行（同一时间仅运行一个，避免磁盘争用）。" />
+        </StackPanel>
 
         <!-- 新建解包任务 -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
@@ -46,7 +51,7 @@
                 VerticalAlignment="Bottom"
                 Click="AddUnpackButton_Click"
                 Content="加入队列"
-                Style="{StaticResource AccentButtonStyle}" />
+                Style="{StaticResource PrimaryActionButtonStyle}" />
         </StackPanel>
 
         <!-- 新建打包任务 -->

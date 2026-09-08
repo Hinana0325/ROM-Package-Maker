@@ -115,6 +115,7 @@ public sealed partial class MainWindow : Window
             if (tag is not null)
             {
                 target = NavView.MenuItems
+                    .Concat(NavView.FooterMenuItems)
                     .OfType<NavigationViewItem>()
                     .FirstOrDefault(i => (string?)i.Tag == tag);
             }

@@ -10,7 +10,85 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
+
+            <!-- ===== 全局页面样式库 ===== -->
+
+            <!-- 页面标题 -->
+            <Style
+                x:Key="PageHeaderTextBlockStyle"
+                BasedOn="{StaticResource TitleTextBlockStyle}"
+                TargetType="TextBlock" />
+
+            <!-- 页面标题下的说明文字 -->
+            <Style x:Key="PageDescriptionTextBlockStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+
+            <!-- 页面内小节标题（介于 Subtitle 与 Body 之间） -->
+            <Style
+                x:Key="SectionHeaderTextBlockStyle"
+                BasedOn="{StaticResource SubtitleTextBlockStyle}"
+                TargetType="TextBlock">
+                <Setter Property="Margin" Value="0,8,0,0" />
+            </Style>
+
+            <!-- 卡片容器：日志面板、状态面板等统一使用 -->
+            <Style x:Key="CardBorderStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="Padding" Value="16" />
+            </Style>
+
+            <!-- 卡片式按钮：主页大卡片入口 -->
+            <Style x:Key="CardButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="Padding" Value="16" />
+            </Style>
+
+            <!-- 紧凑磁贴按钮：图标 + 文字一行，左对齐，用于快速操作区 -->
+            <Style x:Key="CompactCardButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="Padding" Value="12,8" />
+                <Setter Property="MinHeight" Value="40" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="FontSize" Value="13" />
+            </Style>
+
+            <!-- 等宽只读日志框 -->
+            <Style x:Key="MonoLogTextBoxStyle" TargetType="TextBox">
+                <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="IsReadOnly" Value="True" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+
+            <!-- 主操作按钮（开始解包 / 开始打包 / 加入队列等） -->
+            <Style
+                x:Key="PrimaryActionButtonStyle"
+                BasedOn="{StaticResource AccentButtonStyle}"
+                TargetType="Button">
+                <Setter Property="MinWidth" Value="160" />
+                <Setter Property="MinHeight" Value="36" />
+            </Style>
+
+            <!-- 工具栏小按钮（清空 / 复制 / 移除已结束等） -->
+            <Style x:Key="ToolbarButtonStyle" TargetType="Button">
+                <Setter Property="MinHeight" Value="28" />
+                <Setter Property="Padding" Value="10,2" />
+                <Setter Property="FontSize" Value="12" />
+            </Style>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

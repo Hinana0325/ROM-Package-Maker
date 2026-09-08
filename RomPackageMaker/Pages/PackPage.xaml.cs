@@ -23,6 +23,7 @@ public sealed partial class PackPage : Page
         if (!string.IsNullOrEmpty(s.DefaultWorkspace)) WorkspaceBox.Text = s.DefaultWorkspace;
         if (!string.IsNullOrEmpty(s.DefaultOutputDir)) OutputPathBox.Text = Path.Combine(s.DefaultOutputDir, "new_rom.zip");
         DragOver += PackPage_DragOver;
+        DragLeave += PackPage_DragLeave;
         Drop += PackPage_Drop;
     }
 
@@ -75,11 +76,21 @@ public sealed partial class PackPage : Page
     private void PackPage_DragOver(object sender, DragEventArgs e)
     {
         if (e.DataView.Contains(StandardDataFormats.StorageItems))
+        {
             e.AcceptedOperation = DataPackageOperation.Copy;
+            if (DropHintOverlay.Visibility != Visibility.Visible)
+                DropHintOverlay.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void PackPage_DragLeave(object sender, DragEventArgs e)
+    {
+        DropHintOverlay.Visibility = Visibility.Collapsed;
     }
 
     private async void PackPage_Drop(object sender, DragEventArgs e)
     {
+        DropHintOverlay.Visibility = Visibility.Collapsed;
         if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
         var items = await e.DataView.GetStorageItemsAsync();
         if (items.Count == 0) return;

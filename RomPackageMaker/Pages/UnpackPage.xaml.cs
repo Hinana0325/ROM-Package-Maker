@@ -25,6 +25,7 @@ public sealed partial class UnpackPage : Page
         }
         // 拖放
         DragOver += UnpackPage_DragOver;
+        DragLeave += UnpackPage_DragLeave;
         Drop += UnpackPage_Drop;
     }
 
@@ -65,11 +66,19 @@ public sealed partial class UnpackPage : Page
         if (e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             e.AcceptedOperation = DataPackageOperation.Copy;
+            if (DropHintOverlay.Visibility != Visibility.Visible)
+                DropHintOverlay.Visibility = Visibility.Visible;
         }
+    }
+
+    private void UnpackPage_DragLeave(object sender, DragEventArgs e)
+    {
+        DropHintOverlay.Visibility = Visibility.Collapsed;
     }
 
     private async void UnpackPage_Drop(object sender, DragEventArgs e)
     {
+        DropHintOverlay.Visibility = Visibility.Collapsed;
         if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
         var items = await e.DataView.GetStorageItemsAsync();
         if (items.Count == 0) return;

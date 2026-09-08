@@ -9,107 +9,186 @@
     AllowDrop="True"
     mc:Ignorable="d">
 
-    <Grid Padding="24,16,24,16" RowSpacing="16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+    <Grid>
+        <Grid Padding="24,16,24,16" RowSpacing="16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="解包 ROM" />
-
-        <StackPanel
-            Grid.Row="1"
-            MaxWidth="640"
-            HorizontalAlignment="Left"
-            Orientation="Vertical"
-            Spacing="12">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBox
-                    x:Name="SourcePathBox"
-                    Width="480"
-                    Header="ROM 文件（刷机包 zip / system.img / boot.img / super.img）"
-                    IsReadOnly="True"
-                    PlaceholderText="选择或拖入 ROM 文件" />
-                <Button
-                    x:Name="BrowseSourceButton"
-                    VerticalAlignment="Bottom"
-                    Click="BrowseSourceButton_Click"
-                    Content="浏览..." />
+            <!-- 标题区 -->
+            <StackPanel Spacing="4">
+                <TextBlock Style="{StaticResource PageHeaderTextBlockStyle}" Text="解包 ROM" />
+                <TextBlock
+                    Style="{StaticResource PageDescriptionTextBlockStyle}"
+                    Text="载入刷机包 zip 或单个分区镜像（system / boot / super 等），解出可编辑的工作目录。也支持把文件直接拖入本页面。" />
             </StackPanel>
 
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBox
-                    x:Name="WorkspaceBox"
-                    Width="480"
-                    Header="工作目录（解包输出位置）"
-                    IsReadOnly="True"
-                    PlaceholderText="选择解包工作目录" />
-                <Button
-                    x:Name="BrowseWorkspaceButton"
-                    VerticalAlignment="Bottom"
-                    Click="BrowseWorkspaceButton_Click"
-                    Content="浏览..." />
-            </StackPanel>
-
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button
-                    x:Name="UnpackButton"
-                    Style="{StaticResource AccentButtonStyle}"
-                    Click="UnpackButton_Click"
-                    Content="开始解包" />
-                <Button
-                    x:Name="CancelButton"
-                    Click="CancelButton_Click"
-                    Content="取消"
-                    Visibility="Collapsed" />
-                <ProgressRing
-                    x:Name="BusyIndicator"
-                    Width="24"
-                    Height="24"
-                    Visibility="Collapsed" />
-            </StackPanel>
-        </StackPanel>
-
-        <StackPanel
-            Grid.Row="2"
-            MaxWidth="640"
-            HorizontalAlignment="Left"
-            Spacing="4">
-            <TextBlock x:Name="StageText" Style="{StaticResource CaptionTextBlockStyle}" Text="就绪" />
-            <ProgressBar x:Name="UnpackProgress" Maximum="100" Value="0" />
-        </StackPanel>
-
-        <Border
-            Grid.Row="3"
-            MaxWidth="960"
-            Padding="12"
-            HorizontalAlignment="Left"
-            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-            BorderThickness="1"
-            CornerRadius="8">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="日志" />
-                    <Button x:Name="ClearLogBtn" Click="ClearLogBtn_Click" Content="清空" />
-                    <Button x:Name="CopyLogBtn" Click="CopyLogBtn_Click" Content="复制" />
-                </StackPanel>
-                <ScrollViewer Grid.Row="1" MaxHeight="320">
+            <!-- 输入区 -->
+            <StackPanel
+                Grid.Row="1"
+                MaxWidth="800"
+                HorizontalAlignment="Stretch"
+                Orientation="Vertical"
+                Spacing="12">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
                     <TextBox
-                        x:Name="LogText"
+                        x:Name="SourcePathBox"
+                        Header="ROM 文件（刷机包 zip / system.img / boot.img / super.img）"
                         IsReadOnly="True"
-                        TextWrapping="Wrap"
-                        Text="等待任务..."
-                        BorderThickness="0"
-                        Background="Transparent" />
-                </ScrollViewer>
-            </Grid>
+                        PlaceholderText="选择或拖入 ROM 文件" />
+                    <Button
+                        x:Name="BrowseSourceButton"
+                        Grid.Column="1"
+                        VerticalAlignment="Bottom"
+                        Click="BrowseSourceButton_Click"
+                        Content="浏览..." />
+                </Grid>
+
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox
+                        x:Name="WorkspaceBox"
+                        Header="工作目录（解包输出位置）"
+                        IsReadOnly="True"
+                        PlaceholderText="选择解包工作目录" />
+                    <Button
+                        x:Name="BrowseWorkspaceButton"
+                        Grid.Column="1"
+                        VerticalAlignment="Bottom"
+                        Click="BrowseWorkspaceButton_Click"
+                        Content="浏览..." />
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button
+                        x:Name="UnpackButton"
+                        Click="UnpackButton_Click"
+                        Style="{StaticResource PrimaryActionButtonStyle}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon FontSize="14" Glyph="&#xE8C8;" />
+                            <TextBlock Text="开始解包" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        x:Name="CancelButton"
+                        Click="CancelButton_Click"
+                        Content="取消"
+                        Visibility="Collapsed" />
+                    <ProgressRing
+                        x:Name="BusyIndicator"
+                        Width="24"
+                        Height="24"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 进度区 -->
+            <StackPanel
+                Grid.Row="2"
+                MaxWidth="800"
+                HorizontalAlignment="Stretch"
+                Spacing="4">
+                <TextBlock x:Name="StageText" Style="{StaticResource CaptionTextBlockStyle}" Text="就绪" />
+                <ProgressBar x:Name="UnpackProgress" Maximum="100" Value="0" />
+            </StackPanel>
+
+            <!-- 日志区 -->
+            <Border
+                Grid.Row="3"
+                Padding="12"
+                HorizontalAlignment="Stretch"
+                Style="{StaticResource CardBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon
+                            VerticalAlignment="Center"
+                            FontSize="14"
+                            Glyph="&#xE8FD;" />
+                        <TextBlock
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            Text="日志" />
+                        <StackPanel
+                            Grid.Column="2"
+                            Margin="12,0,0,0"
+                            Orientation="Horizontal"
+                            Spacing="4">
+                            <Button
+                                x:Name="ClearLogBtn"
+                                Click="ClearLogBtn_Click"
+                                Content="清空"
+                                Style="{StaticResource ToolbarButtonStyle}" />
+                            <Button
+                                x:Name="CopyLogBtn"
+                                Click="CopyLogBtn_Click"
+                                Content="复制"
+                                Style="{StaticResource ToolbarButtonStyle}" />
+                        </StackPanel>
+                        <TextBlock
+                            Grid.Column="3"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="最新日志置顶" />
+                    </Grid>
+                    <ScrollViewer Grid.Row="1" MaxHeight="360">
+                        <TextBox
+                            x:Name="LogText"
+                            Style="{StaticResource MonoLogTextBoxStyle}"
+                            Text="等待任务..." />
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- 拖放提示层 -->
+        <Border
+            x:Name="DropHintOverlay"
+            Margin="24,16,24,16"
+            Padding="24"
+            Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+            BorderThickness="2"
+            CornerRadius="8"
+            IsHitTestVisible="False"
+            Visibility="Collapsed">
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="8">
+                <FontIcon
+                    HorizontalAlignment="Center"
+                    FontSize="48"
+                    Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                    Glyph="&#xE8C8;" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Style="{StaticResource SubtitleTextBlockStyle}"
+                    Text="松开以放入 ROM 文件或工作目录" />
+            </StackPanel>
         </Border>
     </Grid>
 </Page>
