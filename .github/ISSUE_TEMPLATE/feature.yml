@@ -1,0 +1,47 @@
+name: ✨ 功能建议
+
+description: 提出新能力或改进建议
+
+labels: ["enhancement"]
+
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决什么问题
+      description: 描述实际场景，而不是直接给方案
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的做法
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及模块
+      options:
+        - 解包 / 打包管线
+        - 镜像格式引擎
+        - 定制能力（prop / 精简 / 预装 / ROOT / 模板）
+        - 界面
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 考虑过的替代方案
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 确认
+      options:
+        - label: 已查看 [docs/PLAN.md](../docs/PLAN.md) 的规划，确认不是已在计划中的项
+          required: false

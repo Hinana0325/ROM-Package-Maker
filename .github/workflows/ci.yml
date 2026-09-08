@@ -41,3 +41,6 @@ jobs:
           -c ${{ matrix.configuration }}
           --no-restore
           -warnaserror
+
+      - name: Run self tests
+        run: dotnet run --project _selftest/SelfTest.csproj -c ${{ matrix.configuration }}

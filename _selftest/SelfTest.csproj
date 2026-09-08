@@ -4,9 +4,10 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>RomSelfTest</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\RomPackageMaker\Services\*.cs" />
+    <Compile Include="..\RomPackageMaker\Services\*.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="SharpCompress" Version="0.50.4" />

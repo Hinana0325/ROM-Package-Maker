@@ -13,11 +13,17 @@
 应用为**非打包（unpackaged）自包含**模式：编译产物是普通 exe 目录，直接运行即可，无需 MSIX 安装或注册包身份。
 
 ```bash
-# 还原 + 编译
+# 还原 + 编译（也可直接打开 RomPackageMaker.sln，含主项目与两个测试工程）
 dotnet build RomPackageMaker/RomPackageMaker.csproj
 
 # 运行
 dotnet run --project RomPackageMaker/RomPackageMaker.csproj
+
+# 端到端回归自测（157 项断言，应全部通过）
+dotnet run --project _selftest/SelfTest.csproj
+
+# 真机样本验证台（需自备真实刷机包镜像）
+cd _realtest && dotnet run -- boot <镜像文件>
 
 # 发布为可分发的自包含目录（免安装）
 dotnet publish RomPackageMaker/RomPackageMaker.csproj -c Release -p:RuntimeIdentifier=win-x64 -p:SelfContained=true
@@ -72,7 +78,7 @@ dotnet publish RomPackageMaker/RomPackageMaker.csproj -c Release -p:RuntimeIdent
 
 ```bash
 # 端到端回归自测（157 项断言，应全部通过）
-dotnet run --project _selftest/TestProj
+dotnet run --project _selftest/SelfTest.csproj
 
 # 有真实刷机包样本时，用真机验证台做字节级往返比对
 cd _realtest && dotnet build -c Release && dotnet run -c Release -- boot <镜像文件>

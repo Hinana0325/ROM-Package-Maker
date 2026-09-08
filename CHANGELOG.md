@@ -5,6 +5,20 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本管理遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 变更
+
+- **仓库结构整理**：新增 `RomPackageMaker.sln`（`src` 主工程 + `tests` 自测与真机验证台），并修正解决方案平台映射为 x64（此前默认会构建出 win-x86 产物）
+
+- 自测工程拍平：`_selftest/TestProj/*` → `_selftest/`（`SelfTest.csproj`），与 `_realtest/` 层级对齐
+
+- 删除与根目录重复的 `RomPackageMaker/.gitignore`
+
+- 新增 `docs/`：`PLAN.md` 与 `formats/aosp-offsets.md`（AOSP 镜像格式关键偏移与实测坑位，此前只存在于会话记忆）
+
+- GitHub 配置补齐：Issue 模板（缺陷 / 功能）、PR 模板（含「按规范字节位置补断言」检查项）、dependabot；CI 新增运行自测步骤
+
 ## [1.0.0](https://github.com/Hinana0325/ROM-Package-Maker/compare/v0.1.0...v1.0.0) - 2026-09-07
 
 ### 新增

@@ -1,0 +1,75 @@
+name: 🐛 缺陷报告
+
+description: 报告解包 / 打包 / 解析出错或界面异常
+
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！请尽量填全，尤其是**镜像信息**与**日志**，否则很难复现。
+
+  - type: input
+    id: version
+    attributes:
+      label: 应用版本 / 提交
+      description: 关于页显示的版本，或 git 提交号
+      placeholder: v1.0.0 / a1b2c3d
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: 系统版本与架构
+      placeholder: Windows 11 26220 / x64
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及模块
+      options:
+        - 解包
+        - 打包
+        - boot / vendor_boot
+        - super / 动态分区
+        - ext4
+        - sparse
+        - payload / OTA
+        - AVB / vbmeta
+        - 界面 / 其他
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: 机型 / ROM 来源（镜像相关问题时必填）
+      placeholder: 小米 nezha / HyperOS 3.0 线刷包
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 从打开应用到出错的完整操作
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为与日志
+      description: 粘贴应用日志区输出；崩溃请附 `%TEMP%\rompkg_crash.log` 内容
+      render: shell
+    validations:
+      required: true

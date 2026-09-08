@@ -91,7 +91,7 @@ Android ROM 解包、定制与打包的 Windows 原生桌面工具。基于微�
 ## 快速开始
 
 ```bash
-# 克隆仓库
+# 克隆仓库（也可直接打开 RomPackageMaker.sln，含主项目与两个测试工程）
 git clone https://github.com/Hinana0325/ROM-Package-Maker.git
 cd ROM-Package-Maker
 
@@ -155,11 +155,17 @@ RomPackageMaker/
 └── Package.appxmanifest          # 打包清单（可选 MSIX 用）
 
 _selftest/
-└── TestProj/                     # 端到端回归自测（157 项断言：全闭环 + AOSP 规范字节位置断言）
+├── Program.cs                    # 端到端回归自测（157 项断言：全闭环 + AOSP 规范字节位置断言）
+└── SelfTest.csproj
 
 _realtest/
 ├── Program.cs                    # 真机样本验证台（boot / avb / super / ext4 / all 子命令）
+├── RealTest.csproj
 └── unsparse_head.py              # Python 独立 liblp 复核脚本
+
+docs/
+├── PLAN.md                       # 下一步开发计划（分期与验收标准）
+└── formats/aosp-offsets.md       # AOSP 镜像格式关键偏移（含实测坑位记录）
 ```
 
 ## 开发指南
@@ -167,6 +173,8 @@ _realtest/
 - 分支规范、提交信息约定与 PR 流程见 [CONTRIBUTING.md](CONTRIBUTING.md)
 
 - 版本历史见 [CHANGELOG.md](CHANGELOG.md)
+
+- 后续开发计划见 [docs/PLAN.md](docs/PLAN.md)；镜像格式偏移速查见 [docs/formats/aosp-offsets.md](docs/formats/aosp-offsets.md)
 
 - 安全问题反馈见 [SECURITY.md](SECURITY.md)
 
