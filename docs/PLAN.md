@@ -43,12 +43,12 @@
 
 ## 四、建议分期
 
-**v1.1（正确性闭环，已基本完成）** — 任务 1 ✅、2 ✅、3 ✅、10 ⏳
-- ✅ CI 接入自测（`.github/workflows/ci.yml` 增加 `dotnet run --project _selftest/SelfTest.csproj` 步骤）
+**v1.1（正确性闭环，已完成）** — 任务 1 ✅、2 ✅、3 ✅、10 ✅
+- ✅ CI 接入自测（`.github/workflows/ci.yml` 增加 `dotnet run --project _selftest/SelfTest.csproj` 步骤；Restore/Build 需带 `-p:RuntimeIdentifier=win-x64`，否则 NETSDK1112）
 - ✅ 打包容量治理：`Ext4Writer.MinSize` 保持重建后不小于原大小；`RomPackService.PackSuperImage` 按 group 估算容量并溢出告警；`PackPreflightService` 加预估（>100% Error / >85% Warn）
 - ✅ 打包自检闭环：`PackVerifyService` 打包后回读产物，校验 boot 头 / ext4 superblock / super 子分区数 / ext4 条目数与工作区一致
-- ⏳ 发版：v1.0 tag + GitHub Release（等代理恢复可推送后做）
-- 验收：自测 159 项 PASS（其中 2 项新加 pack-verify 断言）
+- ✅ 发版：tag `v1.0` + [GitHub Release](https://github.com/Hinana0325/ROM-Package-Maker/releases/tag/v1.0)
+- 验收：CI 全绿（Debug + Release 矩阵，含自测步骤）；自测 159 项 PASS（其中 2 项新加 pack-verify 断言）
 
 **v1.2（能力扩展）** — 任务 4、5、6
 目标：UI 收口 + 覆盖更多真实场景（AVB 重签名、文件树）。
