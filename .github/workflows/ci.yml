@@ -32,15 +32,11 @@ jobs:
           key: nuget-${{ runner.os }}-${{ matrix.configuration }}-${{ hashFiles('**/*.csproj') }}
           restore-keys: nuget-${{ runner.os }}-
 
-      - name: Restore
-        run: dotnet restore RomPackageMaker/RomPackageMaker.csproj -p:RuntimeIdentifier=win-x64
-
       - name: Build
         run: >
           dotnet build RomPackageMaker/RomPackageMaker.csproj
           -c ${{ matrix.configuration }}
           -p:RuntimeIdentifier=win-x64
-          --no-restore
           -warnaserror
 
       - name: Run self tests
