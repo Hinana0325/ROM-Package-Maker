@@ -33,12 +33,13 @@ jobs:
           restore-keys: nuget-${{ runner.os }}-
 
       - name: Restore
-        run: dotnet restore RomPackageMaker/RomPackageMaker.csproj
+        run: dotnet restore RomPackageMaker/RomPackageMaker.csproj -p:RuntimeIdentifier=win-x64
 
       - name: Build
         run: >
           dotnet build RomPackageMaker/RomPackageMaker.csproj
           -c ${{ matrix.configuration }}
+          -p:RuntimeIdentifier=win-x64
           --no-restore
           -warnaserror
 
