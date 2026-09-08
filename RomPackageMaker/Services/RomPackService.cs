@@ -404,7 +404,7 @@ public sealed class RomPackService : IRomPackService
                 switch (pm.ImageType)
                 {
                     case "ext4":
-                        PackExt4Image(partDir, outputImg, pm.WasSparse, progress, cancellationToken);
+                        PackExt4Image(partDir, outputImg, pm.WasSparse, pm.OriginalSize, progress, cancellationToken);
                         break;
                     case "boot":
                         PackBootImage(partDir, outputImg, pm, progress, cancellationToken);
@@ -454,7 +454,27 @@ public sealed class RomPackService : IRomPackService
                 File.Move(unsignedZip, outputPath);
             }
 
-            progress.Report(new RomTaskProgress(100, "打包完成", outputPath));
+            progress.Report(new RomTaskProgress(92, "打包完成", outputPath));
+
+            // 打包自检：回读产物，验证镜像头可解析、ext4 条目数与工作区一致、super 子分区齐全
+            progress.Report(new RomTaskProgress(93, "打包自检"));
+            try
+            {
+                var checks = PackVerifyService.Verify(workspaceDir, outputPath, progress);
+                foreach (var c in checks)
+                {
+                    progress.Report(new RomTaskProgress(98, c.Ok ? "自检通过" : "自检未通过", $"  {c.Name}：{c.Detail}"));
+                }
+                int failed = checks.Count(c => !c.Ok);
+                progress.Report(new RomTaskProgress(100,
+                    failed == 0 ? $"打包自检通过（{checks.Count} 项）" : $"打包自检发现 {failed} 项异常",
+                    failed == 0 ? null : "  请核对上方异常项后再刷机"));
+            }
+            catch (Exception ex)
+            {
+                // 自检失败不影响产物，仅提示
+                progress.Report(new RomTaskProgress(100, "打包自检异常", $"  {ex.Message}"));
+            }
         }
         finally
         {
@@ -465,14 +485,24 @@ public sealed class RomPackService : IRomPackService
         }
     }
 
-    private void PackExt4Image(string partDir, string outputImg, bool toSparse, IProgress<RomTaskProgress> progress, CancellationToken cancellationToken)
+    private void PackExt4Image(string partDir, string outputImg, bool toSparse,
+        long minSize, IProgress<RomTaskProgress> progress, CancellationToken cancellationToken)
     {
         // 先构建原始 ext4 镜像
         string rawImg = outputImg + ".raw";
         using (var fs = File.Create(rawImg))
         {
-            var writer = new Ext4Writer();
+            var writer = new Ext4Writer { MinSize = minSize };
             writer.Build(partDir, fs, progress, cancellationToken);
+        }
+
+        long builtSize = new FileInfo(rawImg).Length;
+        if (minSize > 0 && builtSize > minSize * 1.05)
+        {
+            // 超过原大小 5%：明确提示，可能装不进原 super 槽位
+            progress.Report(new RomTaskProgress(0,
+                "容量告警：分区内容已超出原镜像大小",
+                $"  {builtSize / 1024.0 / 1024.0:F0} MiB > {minSize / 1024.0 / 1024.0:F0} MiB（可能需要扩容 super）"));
         }
 
         if (toSparse)
@@ -504,6 +534,34 @@ public sealed class RomPackService : IRomPackService
                 subs.Add(new SubPartitionManifest { Name = Path.GetFileNameWithoutExtension(img), ImageType = "raw" });
             }
         }
+
+        // 容量预估：ext4 子分区按目录字节和 + 12% 元数据开销估算，raw 子分区按现有 .img 大小
+        // 全部子分区按 group_index 汇总，与该组的 MaximumSize 比较；任一分组超容即告警
+        try
+        {
+            ulong totalMetadata = (ulong)prms.MetadataMaxSize * Math.Max(1, prms.MetadataSlotCount);
+            var byGroup = prms.Partitions.GroupBy(p => p.GroupIndex).ToDictionary(g => g.Key, g => g.Select(p => p.Name).ToList());
+            for (int gIdx = 0; gIdx < prms.Groups.Count; gIdx++)
+            {
+                if (!byGroup.TryGetValue((uint)gIdx, out var names)) continue;
+                var grp = prms.Groups[gIdx];
+                long used = (long)totalMetadata;
+                foreach (string name in names)
+                {
+                    var sub = subs.FirstOrDefault(s => s.Name == name);
+                    if (sub is null) continue;
+                    string subDir = Path.Combine(workspaceDir, sub.ExtractedDir);
+                    used += EstimateSubSize(subDir, sub.ImageType, partDir, name);
+                }
+                if (used > (long)grp.MaximumSize)
+                {
+                    progress.Report(new RomTaskProgress(0,
+                        "容量告警：super 分组容量不足",
+                        $"  分组 {grp.Name} 预估 {used / 1024.0 / 1024.0:F0} MiB > 槽位 {grp.MaximumSize / 1024.0 / 1024.0:F0} MiB"));
+                }
+            }
+        }
+        catch { /* 估算失败不阻塞打包 */ }
 
         var entries = new List<SuperImage.SuperPackEntry>();
         var tempFiles = new List<string>();
@@ -582,6 +640,25 @@ public sealed class RomPackService : IRomPackService
         if (File.Exists(direct)) return direct;
         return Directory.GetFiles(partDir, subName + ".*.img").FirstOrDefault()
             ?? Directory.GetFiles(partDir, subName + ".*").FirstOrDefault(f => f.EndsWith(".img", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>估算子分区重建后的字节数（用于 super 容量告警）。</summary>
+    private static long EstimateSubSize(string subDir, string imageType, string partDir, string subName)
+    {
+        if (imageType == "ext4" && Directory.Exists(subDir))
+        {
+            long content = 0;
+            foreach (var f in Directory.EnumerateFiles(subDir, "*", SearchOption.AllDirectories))
+            {
+                try { content += new FileInfo(f).Length; } catch { }
+            }
+            // ext4 元数据开销（inode、目录、bitmap、xattr）通常 5–15%，按 12% 估算并向上对齐 4 KiB
+            long est = (long)(content * 1.12);
+            return (est + 4095) / 4096 * 4096;
+        }
+        var existing = FindSubImage(partDir, subName);
+        if (existing is not null) return new FileInfo(existing).Length;
+        return 0;
     }
 
     private void PackBootImage(string partDir, string outputImg, PartitionManifest pm, IProgress<RomTaskProgress> progress, CancellationToken cancellationToken)

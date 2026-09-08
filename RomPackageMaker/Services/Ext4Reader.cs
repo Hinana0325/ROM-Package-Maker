@@ -498,6 +498,45 @@ internal sealed class Ext4Reader : IDisposable
         return entries;
     }
 
+    /// <summary>
+    /// 统计镜像内的目录 / 文件条目数（不落盘），供打包自检与容量预估使用。
+    /// 达到 cap 即停止深入，避免大分区（system 数万条目）校验过慢。
+    /// </summary>
+    public int CountEntries(int maxDepth = 3, int cap = 20000)
+    {
+        try
+        {
+            var rootInode = ParseInode(ReadInode(2));
+            if (!IsDirectory(rootInode)) return -1;
+            int count = 0;
+            var queue = new Queue<(InodeInfo Inode, int Depth)>();
+            queue.Enqueue((rootInode, 0));
+            while (queue.Count > 0 && count < cap)
+            {
+                var (inode, depth) = queue.Dequeue();
+                foreach (var e in ReadDirectory(inode))
+                {
+                    count++;
+                    if (count >= cap) break;
+                    if (e.FileType == 2 && depth + 1 < maxDepth)
+                    {
+                        try
+                        {
+                            var child = ParseInode(ReadInode(e.Inode));
+                            if (IsDirectory(child)) queue.Enqueue((child, depth + 1));
+                        }
+                        catch { /* 单个目录读失败不中断统计 */ }
+                    }
+                }
+            }
+            return count;
+        }
+        catch
+        {
+            return -1;
+        }
+    }
+
     /// <summary>将整个文件系统提取到目标目录，并导出元数据清单（.rom_metadata.json）。</summary>
     public void ExtractTo(string outputDir, IProgress<RomTaskProgress>? progress = null, CancellationToken cancellationToken = default)
     {

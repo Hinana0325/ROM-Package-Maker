@@ -54,6 +54,11 @@ internal sealed class Ext4Writer
         public Dictionary<string, uint>? DirEntries; // name -> inode
     }
 
+    /// <summary>
+    /// 最小镜像字节数。设为原分区大小可让重建后的镜像不小于原镜像（默认 0 = 由内容决定）。
+    /// </summary>
+    public long MinSize { get; set; }
+
     /// <summary>将目录树构建为 ext4 镜像并写入目标流。</summary>
     public void Build(string sourceDir, Stream output, IProgress<RomTaskProgress>? progress = null, CancellationToken cancellationToken = default)
     {
@@ -275,7 +280,17 @@ internal sealed class Ext4Writer
         }
         totalBlocks = (ulong)groups * BlocksPerGroup;
 
-        // 分配数据块：从每个组的数据区开始分配
+        // 最小镜像尺寸：保持与原分区一致，避免重建后镜像缩小导致 super 元数据 / 刷机脚本与实际不符
+        if (MinSize > 0)
+        {
+            ulong minBlocks = (ulong)((MinSize + BlockSize - 1) / BlockSize);
+            ulong minAligned = (ulong)Math.Ceiling((double)minBlocks / BlocksPerGroup) * BlocksPerGroup;
+            if (totalBlocks < minAligned)
+            {
+                totalBlocks = minAligned;
+                groups = (uint)(totalBlocks / BlocksPerGroup);
+            }
+        }
         // 组 0 的布局：block 0 = superblock, block 1 = GDT, block 2 = block bitmap, block 3 = inode bitmap, block 4.. = inode table, then data
         // 对于组 g>0：没有 superblock/GDT 副本（简化），所以 block g*BPG = block bitmap, +1 inode bitmap, +2.. inode table, then data
 

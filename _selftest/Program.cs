@@ -170,6 +170,18 @@ Check("e2e: boot kernel roundtrip", kernel2.AsSpan().SequenceEqual(kernel));
 
 Check("e2e: shell apk size", new FileInfo(Path.Combine(ws2, "system/priv-app/Shell/Shell.apk")).Length == 1024);
 
+// 打包自检：回读 e2e 打出的 zip，验证每项检查都通过
+{
+    var checks = PackVerifyService.Verify(ws1, outZip, null);
+    int failed = checks.Count(c => !c.Ok);
+    Check("pack-verify: count > 0", checks.Count > 0);
+    Check("pack-verify: all ok", failed == 0);
+    foreach (var c in checks)
+    {
+        if (!c.Ok) Console.WriteLine($"  [diag] FAIL {c.Name}: {c.Detail}");
+    }
+}
+
 // ==================== 6. payload.bin 解析与提取 ====================
 
 // --- protobuf 编码辅助（构造合成 manifest 用） ---

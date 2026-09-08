@@ -57,6 +57,38 @@ public static class PackPreflightService
                     Message = $"boot 分区缺少 boot_params.json，将用默认参数重打包（可能丢失原 cmdline / 页大小）。",
                 });
             }
+            // 容量预估：ext4 分区按目录字节和 + 12% 元数据开销，与原始镜像大小对比
+            if (pm.ImageType == "ext4" && pm.OriginalSize > 0
+                && !string.IsNullOrEmpty(pm.ExtractedDir))
+            {
+                string partDir = Path.Combine(workspaceDir, pm.ExtractedDir);
+                if (Directory.Exists(partDir))
+                {
+                    long content = 0;
+                    foreach (var f in Directory.EnumerateFiles(partDir, "*", SearchOption.AllDirectories))
+                    {
+                        try { content += new FileInfo(f).Length; } catch { }
+                    }
+                    long est = (long)(content * 1.12);
+                    double ratio = (double)est / pm.OriginalSize;
+                    if (ratio > 1.0)
+                    {
+                        issues.Add(new PreflightIssue
+                        {
+                            Level = PreflightLevel.Error,
+                            Message = $"分区 {pm.Name} 预估 {est / (1 << 20)} MiB > 原镜像 {pm.OriginalSize / (1 << 20)} MiB，打包后很可能装不进 super 槽位。请先精简或扩容 super。",
+                        });
+                    }
+                    else if (ratio > 0.85)
+                    {
+                        issues.Add(new PreflightIssue
+                        {
+                            Level = PreflightLevel.Warn,
+                            Message = $"分区 {pm.Name} 预估 {est / (1 << 20)} MiB / 原 {pm.OriginalSize / (1 << 20)} MiB（{ratio:P0}），已接近上限。",
+                        });
+                    }
+                }
+            }
         }
 
         // AVB 状态：存在 vbmeta 且未禁用验证 → 修改过的 ROM 大概率校验失败
