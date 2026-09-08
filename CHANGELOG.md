@@ -7,6 +7,17 @@
 
 ## [Unreleased]
 
+### 新增
+
+- **打包自检闭环（`PackVerifyService`）**：打包完成后回读产物，校验 zip 可打开、boot 头可解析、ext4 superblock 与目录树可读、super 子分区数与清单一致；ext4 条目数与工作区对比（统计上限 3 层 / 2 万）；结果在打包页日志输出
+
+- **打包容量治理**：
+  - `Ext4Writer.MinSize`：保持重建后镜像不小于原大小，避免 super 槽位与刷机脚本与实际不符
+  - `RomPackService.PackSuperImage` 按 `group_index` 估算子分区大小（ext4 子分区按目录字节和 + 12% 元数据开销；raw 子分区按现有 .img 大小），与 `GroupParam.MaximumSize` 比较；溢出时输出告警
+  - `RomPackService.PackExt4Image` 重建后超过原值 5% 时显式提示
+  - `PackPreflightService` 加容量预估：>100% 报 Error、>85% 报 Warn
+  - `Ext4Reader.CountEntries(maxDepth, cap)`：轻量目录树统计（不落盘），供自检与容量估算使用
+
 ### 变更
 
 - **仓库结构整理**：新增 `RomPackageMaker.sln`（`src` 主工程 + `tests` 自测与真机验证台），并修正解决方案平台映射为 x64（此前默认会构建出 win-x86 产物）

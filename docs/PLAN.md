@@ -43,8 +43,12 @@
 
 ## 四、建议分期
 
-**v1.1（正确性闭环，建议先做）** — 任务 1、2、3 + 10
-目标：让「打包出来的 ROM 可信」。验收：CI 跑自测；真机样本（小米 nezha）跑通「解包 → 不改内容直接打包 → 回读比对：分区清单一致、ext4 文件清单一致、boot 字节级一致」；容量溢出有明确提示；v1.0 Release 发布。
+**v1.1（正确性闭环，已基本完成）** — 任务 1 ✅、2 ✅、3 ✅、10 ⏳
+- ✅ CI 接入自测（`.github/workflows/ci.yml` 增加 `dotnet run --project _selftest/SelfTest.csproj` 步骤）
+- ✅ 打包容量治理：`Ext4Writer.MinSize` 保持重建后不小于原大小；`RomPackService.PackSuperImage` 按 group 估算容量并溢出告警；`PackPreflightService` 加预估（>100% Error / >85% Warn）
+- ✅ 打包自检闭环：`PackVerifyService` 打包后回读产物，校验 boot 头 / ext4 superblock / super 子分区数 / ext4 条目数与工作区一致
+- ⏳ 发版：v1.0 tag + GitHub Release（等代理恢复可推送后做）
+- 验收：自测 159 项 PASS（其中 2 项新加 pack-verify 断言）
 
 **v1.2（能力扩展）** — 任务 4、5、6
 目标：UI 收口 + 覆盖更多真实场景（AVB 重签名、文件树）。
