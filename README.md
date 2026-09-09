@@ -73,8 +73,8 @@ Android ROM 解包、定制与打包的 Windows 原生桌面工具。基于微�
 
 | 层级    | 选型                                          |
 | ----- | ------------------------------------------- |
-| 语言    | C# / .NET 8.0                               |
-| UI 框架 | WinUI 3（Windows App SDK 2.2）                |
+| 语言    | C# / .NET 10.0                              |
+| UI 框架 | WinUI 3（Windows App SDK 2.4）                |
 | 布局    | TitleBar + NavigationView + MicaBackdrop    |
 | 部署 | 非打包（unpackaged）自包含运行时，目标机器无需安装任何运行时 |
 | 压缩 | SharpCompress（payload XZ 数据解压，纯托管） |
@@ -84,7 +84,7 @@ Android ROM 解包、定制与打包的 Windows 原生桌面工具。基于微�
 
 - Windows 10 1809（build 17763）及以上
 
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)（开发）
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)（开发）
 
 - Visual Studio 2022（可选，需「使用 C++ 的桌面开发」与「Windows 应用程序开发」工作负载）
 
@@ -109,7 +109,7 @@ dotnet build RomPackageMaker/RomPackageMaker.csproj -c Release
 
 ```bash
 dotnet publish RomPackageMaker/RomPackageMaker.csproj -c Release -p:RuntimeIdentifier=win-x64 -p:SelfContained=true
-# 输出位于 RomPackageMaker/bin/Release/net8.0-windows10.0.26100.0/win-x64/publish/
+# 输出位于 RomPackageMaker/bin/Release/net10.0-windows10.0.26100.0/win-x64/publish/
 ```
 
 ## 项目结构

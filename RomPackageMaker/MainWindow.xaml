@@ -36,7 +36,28 @@
             IsBackButtonVisible="Collapsed"
             IsPaneToggleButtonVisible="False"
             IsSettingsVisible="True"
+            Background="{ThemeResource AppBackgroundBrush}"
             SelectionChanged="NavView_SelectionChanged">
+            <NavigationView.Resources>
+                <!-- 深色导航栏背景与内容区背景 -->
+                <SolidColorBrush x:Key="NavigationViewPaneBackground" Color="{ThemeResource NavBackgroundColor}" />
+                <SolidColorBrush x:Key="NavigationViewContentBackground" Color="{ThemeResource AppBackgroundColor}" />
+                <SolidColorBrush x:Key="NavigationViewBackground" Color="{ThemeResource AppBackgroundColor}" />
+                <!-- 深色导航栏上的菜单项颜色 -->
+                <SolidColorBrush x:Key="NavigationViewItemForeground" Color="{ThemeResource NavTextColor}" />
+                <SolidColorBrush x:Key="NavigationViewItemForegroundPointerOver" Color="{ThemeResource NavTextSelectedColor}" />
+                <SolidColorBrush x:Key="NavigationViewItemForegroundPressed" Color="{ThemeResource NavTextSelectedColor}" />
+                <SolidColorBrush x:Key="NavigationViewItemForegroundSelected" Color="{ThemeResource NavTextSelectedColor}" />
+                <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPointerOver" Color="{ThemeResource NavTextSelectedColor}" />
+                <SolidColorBrush x:Key="NavigationViewItemBackground" Color="Transparent" />
+                <SolidColorBrush x:Key="NavigationViewItemBackgroundPointerOver" Color="{ThemeResource NavHoverColor}" />
+                <SolidColorBrush x:Key="NavigationViewItemBackgroundPressed" Color="{ThemeResource NavHoverColor}" />
+                <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="{ThemeResource BrandColor}" Opacity="0.25" />
+                <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPointerOver" Color="{ThemeResource BrandColor}" Opacity="0.35" />
+                <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="{ThemeResource BrandColor}" />
+                <SolidColorBrush x:Key="NavigationViewItemHeaderForeground" Color="{ThemeResource NavTextColor}" Opacity="0.6" />
+                <SolidColorBrush x:Key="NavigationViewItemSeparatorForeground" Color="{ThemeResource NavTextColor}" Opacity="0.15" />
+            </NavigationView.Resources>
             <NavigationView.MenuItems>
                 <NavigationViewItem
                     Content="主页"

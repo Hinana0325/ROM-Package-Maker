@@ -5,7 +5,7 @@
 ## 开发环境
 
 - Windows 10 1809（build 17763）及以上
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - 可选：Visual Studio 2022 +「Windows 应用程序开发」工作负载
 
 ## 本地构建
@@ -31,7 +31,7 @@ dotnet publish RomPackageMaker/RomPackageMaker.csproj -c Release -p:RuntimeIdent
 
 提交前请确保 `Debug` 与 `Release` 两种配置均编译通过、无警告。
 
-> 注意：本地调试时 Windows App SDK NuGet 版本需与机器上安装的 Windows App Runtime 版本匹配（当前为 2.2.x）；自包含发布产物不依赖系统运行时，可直接分发。
+> 注意：本地调试时 Windows App SDK NuGet 版本需与机器上安装的 Windows App Runtime 版本匹配（当前为 2.4.x）；自包含发布产物不依赖系统运行时，可直接分发。
 
 ## 分支规范
 

@@ -8,85 +8,241 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- ===== 全局页面样式库 ===== -->
+            <!-- ===== 品牌配色系统（浅色 / 深色双主题） ===== -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="BrandColor">#FF4F6EF7</Color>
+                    <Color x:Key="BrandColorDark">#FF3B52D4</Color>
+                    <Color x:Key="BrandColorLight">#FFEEF1FF</Color>
+                    <Color x:Key="AppBackgroundColor">#FFF4F5F8</Color>
+                    <Color x:Key="CardBackgroundColor">#FFFFFFFF</Color>
+                    <Color x:Key="TextPrimaryColor">#FF1A1B1E</Color>
+                    <Color x:Key="TextSecondaryColor">#FF6B7280</Color>
+                    <Color x:Key="BorderColor">#FFE5E7EB</Color>
+                    <Color x:Key="NavBackgroundColor">#FF1B1C22</Color>
+                    <Color x:Key="NavTextColor">#FFB8BAC4</Color>
+                    <Color x:Key="NavTextSelectedColor">#FFFFFFFF</Color>
+                    <Color x:Key="NavHoverColor">#FF2A2C36</Color>
+                    <Color x:Key="HeroGradientStart">#FF4F6EF7</Color>
+                    <Color x:Key="HeroGradientEnd">#FF7B5CF7</Color>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="BrandColor">#FF6B8AFF</Color>
+                    <Color x:Key="BrandColorDark">#FF5270E0</Color>
+                    <Color x:Key="BrandColorLight">#FF252A40</Color>
+                    <Color x:Key="AppBackgroundColor">#FF121316</Color>
+                    <Color x:Key="CardBackgroundColor">#FF1E1F24</Color>
+                    <Color x:Key="TextPrimaryColor">#FFF0F0F2</Color>
+                    <Color x:Key="TextSecondaryColor">#FF9CA3AF</Color>
+                    <Color x:Key="BorderColor">#FF33343A</Color>
+                    <Color x:Key="NavBackgroundColor">#FF0E0F12</Color>
+                    <Color x:Key="NavTextColor">#FFA0A2AC</Color>
+                    <Color x:Key="NavTextSelectedColor">#FFFFFFFF</Color>
+                    <Color x:Key="NavHoverColor">#FF1E2028</Color>
+                    <Color x:Key="HeroGradientStart">#FF4F6EF7</Color>
+                    <Color x:Key="HeroGradientEnd">#FF7B5CF7</Color>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
 
-            <!-- 页面标题 -->
-            <Style
-                x:Key="PageHeaderTextBlockStyle"
-                BasedOn="{StaticResource TitleTextBlockStyle}"
-                TargetType="TextBlock" />
+            <!-- 品牌 Brush -->
+            <SolidColorBrush x:Key="BrandBrush" Color="{ThemeResource BrandColor}" />
+            <SolidColorBrush x:Key="BrandDarkBrush" Color="{ThemeResource BrandColorDark}" />
+            <SolidColorBrush x:Key="BrandLightBrush" Color="{ThemeResource BrandColorLight}" />
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="{ThemeResource AppBackgroundColor}" />
+            <SolidColorBrush x:Key="CardBackgroundBrush" Color="{ThemeResource CardBackgroundColor}" />
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="{ThemeResource TextPrimaryColor}" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="{ThemeResource TextSecondaryColor}" />
+            <SolidColorBrush x:Key="BorderBrush" Color="{ThemeResource BorderColor}" />
+            <SolidColorBrush x:Key="NavBackgroundBrush" Color="{ThemeResource NavBackgroundColor}" />
+            <SolidColorBrush x:Key="NavTextBrush" Color="{ThemeResource NavTextColor}" />
+            <SolidColorBrush x:Key="NavTextSelectedBrush" Color="{ThemeResource NavTextSelectedColor}" />
+            <SolidColorBrush x:Key="NavHoverBrush" Color="{ThemeResource NavHoverColor}" />
 
-            <!-- 页面标题下的说明文字 -->
+            <!-- Hero 渐变 -->
+            <LinearGradientBrush x:Key="HeroGradientBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Offset="0" Color="{ThemeResource HeroGradientStart}" />
+                <GradientStop Offset="1" Color="{ThemeResource HeroGradientEnd}" />
+            </LinearGradientBrush>
+
+            <!-- ===== 文字样式 ===== -->
+            <Style x:Key="PageHeaderTextBlockStyle" BasedOn="{StaticResource TitleTextBlockStyle}" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="28" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}" />
+                <Setter Property="Margin" Value="0,0,0,4" />
+            </Style>
+
             <Style x:Key="PageDescriptionTextBlockStyle" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource TextSecondaryBrush}" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="LineHeight" Value="22" />
                 <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
 
-            <!-- 页面内小节标题（介于 Subtitle 与 Body 之间） -->
-            <Style
-                x:Key="SectionHeaderTextBlockStyle"
-                BasedOn="{StaticResource SubtitleTextBlockStyle}"
-                TargetType="TextBlock">
-                <Setter Property="Margin" Value="0,8,0,0" />
+            <Style x:Key="SectionHeaderTextBlockStyle" BasedOn="{StaticResource SubtitleTextBlockStyle}" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}" />
+                <Setter Property="Margin" Value="0,24,0,0" />
             </Style>
 
-            <!-- 卡片容器：日志面板、状态面板等统一使用 -->
+            <!-- ===== 卡片容器 ===== -->
             <Style x:Key="CardBorderStyle" TargetType="Border">
-                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource BorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="8" />
-                <Setter Property="Padding" Value="16" />
+                <Setter Property="CornerRadius" Value="14" />
+                <Setter Property="Padding" Value="18" />
             </Style>
 
-            <!-- 卡片式按钮：主页大卡片入口 -->
-            <Style x:Key="CardButtonStyle" TargetType="Button">
-                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
-                <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="8" />
-                <Setter Property="Padding" Value="16" />
-            </Style>
-
-            <!-- 紧凑磁贴按钮：图标 + 文字一行，左对齐，用于快速操作区 -->
+            <!-- ===== 磁贴按钮（自定义模板 + hover 上浮） ===== -->
             <Style x:Key="CompactCardButtonStyle" TargetType="Button">
-                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource BorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="6" />
-                <Setter Property="Padding" Value="12,8" />
-                <Setter Property="MinHeight" Value="40" />
-                <Setter Property="HorizontalContentAlignment" Value="Left" />
-                <Setter Property="FontSize" Value="13" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="16,12" />
+                <Setter Property="MinHeight" Value="64" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid
+                                x:Name="RootGrid"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                RenderTransformOrigin="0.5,0.5">
+                                <Grid.RenderTransform>
+                                    <TranslateTransform x:Name="HoverTranslate" X="0" Y="0" />
+                                </Grid.RenderTransform>
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="RootGrid.Background" Value="{ThemeResource BrandLightBrush}" />
+                                                <Setter Target="RootGrid.BorderBrush" Value="{ThemeResource BrandBrush}" />
+                                                <Setter Target="HoverTranslate.Y" Value="-2" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="RootGrid.Background" Value="{ThemeResource BrandLightBrush}" />
+                                                <Setter Target="HoverTranslate.Y" Value="0" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="RootGrid.Opacity" Value="0.4" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                                <ContentPresenter
+                                    Margin="{TemplateBinding Padding}"
+                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
-            <!-- 等宽只读日志框 -->
+            <!-- 大卡片按钮 -->
+            <Style x:Key="CardButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource BorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="14" />
+                <Setter Property="Padding" Value="18" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid
+                                x:Name="RootGrid"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{TemplateBinding CornerRadius}">
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="RootGrid.Background" Value="{ThemeResource BrandLightBrush}" />
+                                                <Setter Target="RootGrid.BorderBrush" Value="{ThemeResource BrandBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="RootGrid.Background" Value="{ThemeResource BrandLightBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="RootGrid.Opacity" Value="0.4" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                                <ContentPresenter
+                                    Margin="{TemplateBinding Padding}"
+                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ===== 日志框 ===== -->
             <Style x:Key="MonoLogTextBoxStyle" TargetType="TextBox">
                 <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="IsReadOnly" Value="True" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}" />
                 <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="Padding" Value="0" />
             </Style>
 
-            <!-- 主操作按钮（开始解包 / 开始打包 / 加入队列等） -->
-            <Style
-                x:Key="PrimaryActionButtonStyle"
-                BasedOn="{StaticResource AccentButtonStyle}"
-                TargetType="Button">
+            <!-- ===== 主操作按钮 ===== -->
+            <Style x:Key="PrimaryActionButtonStyle" BasedOn="{StaticResource AccentButtonStyle}" TargetType="Button">
+                <Setter Property="CornerRadius" Value="10" />
                 <Setter Property="MinWidth" Value="160" />
-                <Setter Property="MinHeight" Value="36" />
+                <Setter Property="MinHeight" Value="40" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Background" Value="{ThemeResource BrandBrush}" />
             </Style>
 
-            <!-- 工具栏小按钮（清空 / 复制 / 移除已结束等） -->
+            <!-- ===== 工具栏小按钮 ===== -->
             <Style x:Key="ToolbarButtonStyle" TargetType="Button">
-                <Setter Property="MinHeight" Value="28" />
-                <Setter Property="Padding" Value="10,2" />
-                <Setter Property="FontSize" Value="12" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="MinHeight" Value="32" />
+                <Setter Property="Padding" Value="14,4" />
+                <Setter Property="FontSize" Value="12.5" />
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource BorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}" />
+            </Style>
+
+            <!-- ===== 步骤编号徽章 ===== -->
+            <Style x:Key="StepNumberBadgeStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource BrandBrush}" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="Width" Value="32" />
+                <Setter Property="Height" Value="32" />
+                <Setter Property="VerticalAlignment" Value="Top" />
             </Style>
 
         </ResourceDictionary>

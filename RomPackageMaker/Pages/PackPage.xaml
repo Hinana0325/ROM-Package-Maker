@@ -10,109 +10,116 @@
     mc:Ignorable="d">
 
     <Grid>
-        <Grid Padding="24,16,24,16" RowSpacing="16">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+        <Grid Padding="24,16,24,16" ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="380" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-            <!-- 标题区 -->
-            <StackPanel Spacing="4">
-                <TextBlock Style="{StaticResource PageHeaderTextBlockStyle}" Text="打包 ROM" />
-                <TextBlock
-                    Style="{StaticResource PageDescriptionTextBlockStyle}"
-                    Text="把已解包 / 已定制的工作目录重新生成分区镜像，输出可刷写的 zip 刷机包。打包前会自动做防呆检查。" />
-            </StackPanel>
-
-            <!-- 输入区 -->
-            <StackPanel
-                Grid.Row="1"
-                MaxWidth="800"
-                HorizontalAlignment="Stretch"
-                Orientation="Vertical"
-                Spacing="12">
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox
-                        x:Name="WorkspaceBox"
-                        Header="工作目录（已解包/已定制的 ROM 内容）"
-                        IsReadOnly="True"
-                        PlaceholderText="选择或拖入 ROM 工作目录" />
-                    <Button
-                        x:Name="BrowseWorkspaceButton"
-                        Grid.Column="1"
-                        VerticalAlignment="Bottom"
-                        Click="BrowseWorkspaceButton_Click"
-                        Content="浏览..." />
-                </Grid>
-
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox
-                        x:Name="OutputPathBox"
-                        Header="输出刷机包（.zip）"
-                        IsReadOnly="True"
-                        PlaceholderText="选择输出文件位置" />
-                    <Button
-                        x:Name="BrowseOutputButton"
-                        Grid.Column="1"
-                        VerticalAlignment="Bottom"
-                        Click="BrowseOutputButton_Click"
-                        Content="浏览..." />
-                </Grid>
-
-                <CheckBox
-                    x:Name="SignCheckBox"
-                    Content="打包后对刷机包签名（使用内置测试证书或设置中配置的密钥）"
-                    IsChecked="True" />
-
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button
-                        x:Name="PackButton"
-                        Click="PackButton_Click"
-                        Style="{StaticResource PrimaryActionButtonStyle}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon FontSize="14" Glyph="&#xE8EF;" />
-                            <TextBlock Text="开始打包" />
-                        </StackPanel>
-                    </Button>
-                    <Button
-                        x:Name="CancelButton"
-                        Click="CancelButton_Click"
-                        Content="取消"
-                        Visibility="Collapsed" />
-                    <ProgressRing
-                        x:Name="BusyIndicator"
-                        Width="24"
-                        Height="24"
-                        VerticalAlignment="Center"
-                        Visibility="Collapsed" />
+            <!-- ===== 左侧：配置区 ===== -->
+            <StackPanel Spacing="16">
+                <StackPanel Spacing="4">
+                    <TextBlock Style="{StaticResource PageHeaderTextBlockStyle}" Text="打包 ROM" />
+                    <TextBlock
+                        Style="{StaticResource PageDescriptionTextBlockStyle}"
+                        Text="把已解包/定制的工作目录重新生成分区镜像，输出可刷写的 zip。打包前自动做防呆检查。" />
                 </StackPanel>
+
+                <StackPanel Spacing="12">
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox
+                            x:Name="WorkspaceBox"
+                            Header="工作目录（已解包内容）"
+                            IsReadOnly="True"
+                            PlaceholderText="选择或拖入 ROM 工作目录" />
+                        <Button
+                            x:Name="BrowseWorkspaceButton"
+                            Grid.Column="1"
+                            VerticalAlignment="Bottom"
+                            Click="BrowseWorkspaceButton_Click"
+                            Content="浏览..." />
+                    </Grid>
+
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox
+                            x:Name="OutputPathBox"
+                            Header="输出刷机包（.zip）"
+                            IsReadOnly="True"
+                            PlaceholderText="选择输出文件位置" />
+                        <Button
+                            x:Name="BrowseOutputButton"
+                            Grid.Column="1"
+                            VerticalAlignment="Bottom"
+                            Click="BrowseOutputButton_Click"
+                            Content="浏览..." />
+                    </Grid>
+
+                    <CheckBox
+                        x:Name="SignCheckBox"
+                        Content="打包后对刷机包签名"
+                        IsChecked="True" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button
+                            x:Name="PackButton"
+                            Click="PackButton_Click"
+                            Style="{StaticResource PrimaryActionButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon FontSize="14" Glyph="&#xE8EF;" />
+                                <TextBlock Text="开始打包" />
+                            </StackPanel>
+                        </Button>
+                        <Button
+                            x:Name="CancelButton"
+                            Click="CancelButton_Click"
+                            Content="取消"
+                            Visibility="Collapsed" />
+                        <ProgressRing
+                            x:Name="BusyIndicator"
+                            Width="24"
+                            Height="24"
+                            VerticalAlignment="Center"
+                            Visibility="Collapsed" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                    <TextBlock x:Name="StageText" Style="{StaticResource CaptionTextBlockStyle}" Text="就绪" />
+                    <ProgressBar x:Name="PackProgress" Maximum="100" Value="0" />
+                </StackPanel>
+
+                <Border
+                    Padding="12,10"
+                    Background="{ThemeResource CardBackgroundBrush}"
+                    BorderBrush="{ThemeResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10">
+                    <StackPanel Spacing="4">
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" Text="打包说明" />
+                        <TextBlock
+                            FontSize="11.5"
+                            Foreground="{ThemeResource TextSecondaryBrush}"
+                            LineHeight="16"
+                            TextWrapping="Wrap"
+                            Text="自动重建 ext4 / sparse 镜像与 super 动态分区，生成 boot.img。签名使用内置测试证书或设置中配置的密钥。" />
+                    </StackPanel>
+                </Border>
             </StackPanel>
 
-            <!-- 进度区 -->
-            <StackPanel
-                Grid.Row="2"
-                MaxWidth="800"
-                HorizontalAlignment="Stretch"
-                Spacing="4">
-                <TextBlock x:Name="StageText" Style="{StaticResource CaptionTextBlockStyle}" Text="就绪" />
-                <ProgressBar x:Name="PackProgress" Maximum="100" Value="0" />
-            </StackPanel>
-
-            <!-- 日志区 -->
+            <!-- ===== 右侧：日志区 ===== -->
             <Border
-                Grid.Row="3"
+                Grid.Column="1"
                 Padding="12"
                 HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
                 Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -126,30 +133,11 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <FontIcon
-                            VerticalAlignment="Center"
-                            FontSize="14"
-                            Glyph="&#xE8FD;" />
-                        <TextBlock
-                            Grid.Column="1"
-                            VerticalAlignment="Center"
-                            Style="{StaticResource BodyStrongTextBlockStyle}"
-                            Text="日志" />
-                        <StackPanel
-                            Grid.Column="2"
-                            Margin="12,0,0,0"
-                            Orientation="Horizontal"
-                            Spacing="4">
-                            <Button
-                                x:Name="ClearLogBtn"
-                                Click="ClearLogBtn_Click"
-                                Content="清空"
-                                Style="{StaticResource ToolbarButtonStyle}" />
-                            <Button
-                                x:Name="CopyLogBtn"
-                                Click="CopyLogBtn_Click"
-                                Content="复制"
-                                Style="{StaticResource ToolbarButtonStyle}" />
+                        <FontIcon VerticalAlignment="Center" FontSize="14" Glyph="&#xE8FD;" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource BodyStrongTextBlockStyle}" Text="日志" />
+                        <StackPanel Grid.Column="2" Margin="12,0,0,0" Orientation="Horizontal" Spacing="4">
+                            <Button x:Name="ClearLogBtn" Click="ClearLogBtn_Click" Content="清空" Style="{StaticResource ToolbarButtonStyle}" />
+                            <Button x:Name="CopyLogBtn" Click="CopyLogBtn_Click" Content="复制" Style="{StaticResource ToolbarButtonStyle}" />
                         </StackPanel>
                         <TextBlock
                             Grid.Column="3"
@@ -159,7 +147,7 @@
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Text="最新日志置顶" />
                     </Grid>
-                    <ScrollViewer Grid.Row="1" MaxHeight="360">
+                    <ScrollViewer Grid.Row="1">
                         <TextBox
                             x:Name="LogText"
                             Style="{StaticResource MonoLogTextBoxStyle}"
@@ -180,19 +168,9 @@
             CornerRadius="8"
             IsHitTestVisible="False"
             Visibility="Collapsed">
-            <StackPanel
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Spacing="8">
-                <FontIcon
-                    HorizontalAlignment="Center"
-                    FontSize="48"
-                    Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                    Glyph="&#xE8EF;" />
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    Style="{StaticResource SubtitleTextBlockStyle}"
-                    Text="松开以放入 ROM 工作目录" />
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                <FontIcon HorizontalAlignment="Center" FontSize="48" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Glyph="&#xE8EF;" />
+                <TextBlock HorizontalAlignment="Center" Style="{StaticResource SubtitleTextBlockStyle}" Text="松开以放入 ROM 工作目录" />
             </StackPanel>
         </Border>
     </Grid>
