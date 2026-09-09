@@ -1,32 +1,36 @@
 # 下一步开发计划（v1.1 起）
 
-> 制定时间：2026-09-08。基于当前代码实况（28 个服务类、15 个页面、自测 157 项、真机验证台 1 套）。
+> 制定时间：2026-09-08（v1.2 更新：2026-09-10）。基于当前代码实况（30 个服务类、15 个页面、自测 159 项、真机验证台 1 套、性能基准工程 1 套）。
 
 ## 一、能力现状盘点
 
 | 能力                | 状态      | 引擎 / 位置                                             |
 | ----------------- | ------- | -------------------------------------------------- |
-| zip 解包 / 重打包 / v1 签名 | ✅ 完整    | `RomPackService` / `ZipSigner`                     |
-| ext4 读 + 写         | ✅ 完整    | `Ext4Reader` / `Ext4Writer`（含 extent 树、SELinux xattr） |
-| sparse ↔ raw      | ✅ 完整    | `SparseImage`（大 don't-care 已修）                      |
-| boot / vendor_boot | ✅ 完整    | `BootImage`（v0–v4，真机字节级往返一致）                         |
-| super / liblp     | ✅ 读 + 写 | `SuperImage`                                       |
-| payload.bin（A/B OTA） | ⚠️ 仅读取  | `PayloadBinService`（无生成）                           |
-| AVB / vbmeta      | ⚠️ 仅禁用  | `AvbService`（无重签名）                                 |
-| 定制能力（prop/精简/预装/ROOT/模板/hosts/对比） | ✅ 完整 | 各 Service + 页面                                     |
-| 质量保障              | ⚠️ 半自动  | 自测 157 项（**CI 未跑**）、真机验证台（本地手动）                    |
+| zip 解包 / 重打包 / v1 签名 | ✅ 完整    | `Application.RomPackService` / `ZipSigner`                     |
+| ext4 读 + 写         | ✅ 完整    | `Engine.Ext4Reader` / `Ext4Writer`（含 extent 树、SELinux xattr） |
+| sparse ↔ raw      | ✅ 完整    | `Engine.SparseImage`（大 don't-care 已修）                      |
+| boot / vendor_boot | ✅ 完整    | `Engine.BootImage`（v0–v4，真机字节级往返一致）                         |
+| super / liblp     | ✅ 读 + 写 | `Engine.SuperImage`                                       |
+| payload.bin（A/B OTA） | ⚠️ 仅读取  | `Engine.PayloadBinService`（无生成）                           |
+| AVB / vbmeta      | ⚠️ 仅禁用  | `Engine.AvbService`（无重签名）                                 |
+| 定制能力（prop/精简/预装/ROOT/模板/hosts/对比） | ✅ 完整 | `Application.*` + 页面                                     |
+| 质量保障              | ⚠️ 半自动  | 自测 159 项（CI 已接）、真机验证台（本地手动）、基准体系（`_benchmark` / `Benchmarks/`） |
 
 ## 二、已识别的短板（有代码依据）
 
-1. **CI 只编译不跑自测** — `.github/workflows/ci.yml` 最后一步是 `dotnet build ... -warnaserror`，自测与真机验证台完全没接进去，回归只能靠本地手动跑。
-2. **打包容量无校验** — `RomPackService.PackExt4Image`（:468）按内容重建镜像，不使用原分区大小；`SuperImage.Pack`（:427）按实际文件长度分配 extent。预装 APK / 加资源后体积超出原分区时，缺少明确的溢出检测与提示。
-3. **打包结果无自检** — 打包完成即结束，不回读产物验证；真机闭环只做过「解包 → 解析」，没做过「解包 → 打包 → 回读比对」。
-4. **AVB 只能禁用验证** — 无法在改分区后重算 hash / hashtree descriptor 并重新签名，锁定 bootloader 的设备无法直接用产物。
-5. **无 CLI / 批处理** — 只能 GUI 点，无法脚本化批量处理。
-6. **界面未收尾** — 本轮 UI 优化仍在迭代；README 截图、深色主题细查、窄窗口自适应未做。
-7. **仓库未发版** — `v1.0` tag 与 GitHub Release 尚未创建。
+> v1.1 已解决：CI 接自测 ✅、打包容量治理 ✅、打包自检闭环 ✅、发版（tag `v1.0`）✅。v1.2 已解决：核心路径流式化 + 基准体系 + 分层 ✅（见四）。
+
+剩余短板：
+
+1. **AVB 只能禁用验证** — 无法在改分区后重算 hash / hashtree descriptor 并重新签名，锁定 bootloader 的设备无法直接用产物。
+2. **无 CLI / 批处理** — 只能 GUI 点，无法脚本化批量处理。
+3. **界面未完全收尾** — README 截图未补（品牌双主题与布局重构已完成）。
+4. **真实 OTA 样本缺口** — P0.2-C 依赖真实 payload.bin 统计 MOVE 重叠率；本地无样本，分析器就绪但未实跑。
+5. **剩余内存热点** — RAM 打包 gzip 结果 `MemoryStream.ToArray()`；Ext4 数据写入段每块 `new byte[4096]` 与 `DataBlocks` 全量 `List<ulong>`（已定位并记录于 `Benchmarks/Memory.md`）。
 
 ## 三、候选任务清单
+
+> ✅ 已完成：任务 1（CI 接自测）、2（容量治理）、3（自检闭环）、10（发版 v1.0）；性能治理与分层见四。
 
 | # | 任务 | 为什么做 | 工作量 | 优先级 |
 |---|---|---|---|---|
@@ -50,7 +54,22 @@
 - ✅ 发版：tag `v1.0` + [GitHub Release](https://github.com/Hinana0325/ROM-Package-Maker/releases/tag/v1.0)
 - 验收：CI 全绿（Debug + Release 矩阵，含自测步骤）；自测 159 项 PASS（其中 2 项新加 pack-verify 断言）
 
-**v1.2（能力扩展）** — 任务 4、5、6
+**v1.2（性能治理 + 架构分层，已完成）**
+- ✅ P0.2-A Ext4Reader 流式化：新增 `WriteFileData(InodeInfo, Stream)`，500MB APK 提取峰值内存 **1013MB → 3MB**（Gen2 5→1、0.5→0.2s），原有读取 API 保留
+- ✅ P0.2-B CreateCpio 流式化：ramdisk 边读边写进 `GZipStream`，50/100/200MB 打包 1315→147 / 772→505 / 1581→613 MB，gzip 输出字节级一致
+- ✅ P0.2-D Ext4Writer inode 表流式化：按块组逐组写出，3.8GB 目录打包 Managed 85→55MB、Private 83→46MB
+- ✅ 基准体系：`_benchmark` 工程（prepare / measure before|after / bench-write / analyze-payload）+ `Benchmarks/` 三文档；Before 经 `git archive` 导出旧版实测
+- ✅ P0.1 分层：`Services/` 30 文件 → `Core`(3) / `Engine`(11) / `Application`(16)，命名空间同步，依赖方向 Application → Engine → Core
+- ⏸ P0.2-C Payload MOVE：分析器（`Engine.PayloadMoveAnalyzer`）与合成 payload 端到端验证完成；**等真实 OTA 样本统计重叠率**（update_engine 协议允许生成重叠 MOVE，不可假设 overlap=0）
+- 验收：产品构建 0 警告 0 错误；_selftest 159 项 PASS；基准回归 gzip 输出字节级一致（零行为变化）
+
+**v1.3（数据取证 + 热点收尾）**
+- P0.2-C 实施：收集 HyperOS / LineageOS / Pixel OTA 跑 `analyze-payload`，按 OverlapForwardUnsafe 计数决定方案（0 → 1MB chunk 复制；少量 → 混合策略；大量 → 反向拷贝 / 整读）
+- 剩余热点清理：gzip 结果 `MemoryStream.ToArray()`（RAM 打包 500MB 峰值）、Ext4 数据写入段块缓冲与 `DataBlocks`；**改动前先建/更新基准**
+- 工作流 v1：`TemplateService` 线性 steps 化（`IRomStep{Id, Inputs, Outputs, IsIdempotent, Run}`），不做 DAG
+- 插件 v0：仓库内插件（HyperOS / OneUI / Magisk）验证 ABI，为 v1 DLL 加载与 plugin.json 签名校验铺路
+
+**v1.4（能力扩展）** — 任务 4、5、6
 目标：UI 收口 + 覆盖更多真实场景（AVB 重签名、文件树）。
 
 **v2.0（工程化）** — 任务 7、8、9

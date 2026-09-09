@@ -19,11 +19,14 @@ dotnet build RomPackageMaker/RomPackageMaker.csproj
 # 运行
 dotnet run --project RomPackageMaker/RomPackageMaker.csproj
 
-# 端到端回归自测（157 项断言，应全部通过）
+# 端到端回归自测（159 项断言，应全部通过）
 dotnet run --project _selftest/SelfTest.csproj
 
 # 真机样本验证台（需自备真实刷机包镜像）
 cd _realtest && dotnet run -- boot <镜像文件>
+
+# 性能基准（prepare 生成样本后 measure；Before/After 跨 commit 对比，见 Benchmarks/）
+dotnet run --project _benchmark/_benchmark.csproj -c Release -- measure after
 
 # 发布为可分发的自包含目录（免安装）
 dotnet publish RomPackageMaker/RomPackageMaker.csproj -c Release -p:RuntimeIdentifier=win-x64 -p:SelfContained=true
@@ -67,6 +70,9 @@ dotnet publish RomPackageMaker/RomPackageMaker.csproj -c Release -p:RuntimeIdent
 
 ## 代码风格
 
+- 代码按依赖方向分层：`Core/`（零依赖）→ `Engine/`（镜像格式）→ `Application/`（业务编排），禁止反向引用
+- 镜像引擎大文件接口返回 `Stream` 而非 `byte[]` / `MemoryStream`，保持流式能力
+
 - 遵循根目录 [.editorconfig](.editorconfig)（`dotnet format` 默认约定）
 - C# 文件顶部启用 `nullable`，避免引入可空警告
 - UI 文案使用中文；代码注释跟随改动范围，用中文说明「为什么」而非「是什么」
@@ -74,10 +80,10 @@ dotnet publish RomPackageMaker/RomPackageMaker.csproj -c Release -p:RuntimeIdent
 
 ## 测试
 
-提交涉及 `Services/` 下镜像引擎（BootImage / SparseImage / SuperImage / Ext4Reader / Ext4Writer）的改动时：
+提交涉及 `Engine/` 下镜像引擎（BootImage / SparseImage / SuperImage / Ext4Reader / Ext4Writer）的改动时：
 
 ```bash
-# 端到端回归自测（157 项断言，应全部通过）
+# 端到端回归自测（159 项断言，应全部通过）
 dotnet run --project _selftest/SelfTest.csproj
 
 # 有真实刷机包样本时，用真机验证台做字节级往返比对

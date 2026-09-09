@@ -47,6 +47,22 @@
   - 解包/打包页：改为左右分栏（左 380px 配置表单，右侧日志占满剩余高度），新增支持格式/打包说明卡片
   - 任务队列页：改为左右分栏（左 400px 添加入队表单，右侧队列列表占满剩余高度）
 
+### 性能
+
+- **Ext4Reader 大文件流式提取（P0.2-A）**：新增 `WriteFileData(InodeInfo, Stream)`，`ExtractDir` 常规文件从 `ReadFileData + WriteAllBytes` 改为 `FileStream + WriteFileData`。500MB APK 提取峰值内存 **1013MB → 3MB**（Gen2 GC 5→1，耗时 0.5→0.2s）；原有读取 API 保留，增量演进
+
+- **CreateCpio 流式化（P0.2-B）**：ramdisk 打包改为边读边写进 `GZipStream`，删除整包 `MemoryStream + ToArray()`。50/100/200MB ramdisk 打包峰值 1315→147 / 772→505 / 1581→613 MB；gzip 输出与旧实现仅差 4–7 字节（cpio 字节级一致）
+
+- **Ext4Writer inode 表流式化（P0.2-D）**：inode 表从全量驻留（8GB 分区约 128MB，随分区线性增长）改为按块组逐组填充并立即写出。3.8GB 目录打包 Managed 85→55MB、Private 83→46MB
+
+- **PayloadMoveAnalyzer（P0.2-C 分析器）**：新增 payload MOVE 操作顺序读写模拟分类（NoOverlap / OverlapForwardSafe / OverlapForwardUnsafe），`_benchmark analyze-payload` 就绪，等真实 OTA 样本统计重叠率后决定优化方案（update_engine 协议允许生成重叠 MOVE，不可假设 overlap=0）
+
+### 变更
+
+- **Engine / Application / Core 分层（P0.1）**：`Services/` 30 个服务拆为 `Core`（3：接口 / 二进制扩展 / 元数据 DTO）、`Engine`（11：镜像格式引擎）、`Application`（16：业务编排与工作流），命名空间与目录一一对应，依赖方向 Application → Engine → Core；修复命名空间遮蔽（`Application` 标识符）与扩展方法依赖盲区
+
+- **新增性能基准工程 `_benchmark`**：`prepare` / `measure before|after` / `bench-write` / `analyze-payload` 子命令，跨 commit 对比优化前后（Before 用 `git archive` 导出旧版）；`Benchmarks/` 三文档（Memory / Performance / TestData）固化基准数据与剩余热点
+
 ## [1.0.0](https://github.com/Hinana0325/ROM-Package-Maker/compare/v0.1.0...v1.0.0) - 2026-09-07
 
 ### 新增

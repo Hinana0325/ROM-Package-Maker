@@ -118,7 +118,7 @@ dotnet publish RomPackageMaker/RomPackageMaker.csproj -c Release -p:RuntimeIdent
 RomPackageMaker/
 ├── App.xaml / App.xaml.cs        # 应用入口、全局异常捕获与主题切换
 ├── MainWindow.xaml               # 主窗口（TitleBar + NavigationView 导航）
-├── Pages/
+├── Pages/                        # 15 个功能页
 │   ├── HomePage.xaml             # 概览页（工作流引导）
 │   ├── UnpackPage.xaml           # 解包工作台（拖放 / 进度 / 取消 / 日志）
 │   ├── PackPage.xaml             # 打包工作台（拖放 / 签名选项 / 取消 / 日志）
@@ -126,36 +126,47 @@ RomPackageMaker/
 │   ├── PayloadPage.xaml          # payload.bin / OTA 解析与分区提取
 │   ├── BuildPropPage.xaml        # build.prop 可视化编辑器（搜索 / 编辑 / 备份）
 │   ├── DebloatPage.xaml          # 预装应用精简（扫描 / 勾选 / 批量删除）
+│   ├── PreinstallPage.xaml       # 应用预装 / 资源替换
 │   ├── RootPage.xaml             # ROOT 集成（boot.img 替换 / Magisk 内置）
 │   ├── AvbPage.xaml              # AVB / dm-verity 处理（禁用验证 / 截断页脚）
 │   ├── TemplatePage.xaml         # 定制模板（编辑 / 保存 / 一键应用）
+│   ├── DiffPage.xaml             # 工作区差异对比
+│   ├── InfoPage.xaml             # ROM 信息分析
 │   ├── SettingsPage.xaml         # 设置页（主题 / 默认路径 / 签名密钥 / 块大小）
 │   └── AboutPage.xaml            # 关于页
-├── Services/
+├── Core/                         # 零依赖核心（3 文件）
 │   ├── IRomPackService.cs        # ROM 任务管线接口（进度 / 取消 / 日志）
-│   ├── RomPackService.cs         # 管线编排（按输入类型分发到各引擎）
-│   ├── RomWorkspace.cs           # 工作目录布局约定
-│   ├── BuildPropService.cs       # build.prop 解析 / 序列化 / 常见属性说明
-│   ├── WorkspaceScanner.cs       # 预装应用扫描 / 删除
-│   ├── RootService.cs            # ROOT 集成（Magisk 内置 / boot 替换）
-│   ├── TemplateService.cs        # 定制模板存储 / 应用
-│   ├── TaskQueueService.cs       # 多任务队列（顺序执行 / 取消 / 进度）
-│   ├── AvbService.cs             # AVB / dm-verity（vbmeta 标志 / 页脚截断）
-│   ├── WorkspaceState.cs         # 跨页面会话状态（最近工作目录）
-│   ├── SparseImage.cs            # Android sparse 镜像解包 / 重打包
-│   ├── Ext4Reader.cs             # ext4 文件系统只读解析（extent）
-│   ├── Ext4Writer.cs             # ext4 文件系统重建
-│   ├── BootImage.cs              # boot / vendor_boot 解析 / 重打包（cpio + gzip）
+│   ├── BinaryExtensions.cs       # 二进制读写扩展（小端读写 / 精确读 / 流复制）
+│   └── Ext4Metadata.cs           # ext4 元数据 DTO
+├── Engine/                       # 镜像格式引擎（11 文件，纯托管、流式优先）
+│   ├── Ext4Reader.cs             # ext4 只读解析（extent 树 / inode 256，大文件流式提取）
+│   ├── Ext4Writer.cs             # ext4 重建（inode 表按块组流式写出）
+│   ├── BootImage.cs              # boot / vendor_boot 解析 / 重打包（cpio + gzip 流式）
+│   ├── SparseImage.cs            # sparse 镜像解包 / 重打包
 │   ├── SuperImage.cs             # super 动态分区布局解析
-│   ├── ZipSigner.cs              # zip 刷机包 APK v1 签名
-│   ├── AppSettings.cs            # 设置持久化（appsettings.json）
-│   └── BinaryExtensions.cs       # 二进制读写辅助
+│   ├── PayloadBinService.cs      # payload.bin（OTA）解析 / 分区提取
+│   ├── PayloadMoveAnalyzer.cs    # payload MOVE 操作重叠分析（等真实样本取证）
+│   ├── AvbService.cs             # AVB / dm-verity（vbmeta 标志 / 页脚截断）
+│   ├── ApkParser.cs              # APK 二进制 XML 解析
+│   └── BuildPropService.cs / BuildPropPresets.cs   # build.prop 解析 / 预设
+├── Application/                  # 业务编排与工作流（16 文件）
+│   ├── RomPackService.cs         # 管线编排（按输入类型分发到各引擎）
+│   ├── TemplateService.cs        # 定制模板（build.prop + 精简 + ROOT，即 Workflow v0）
+│   ├── TaskQueueService.cs       # 多任务队列（顺序执行 / 取消 / 进度）
+│   ├── WorkspaceScanner.cs       # 预装应用扫描 / 删除
+│   ├── WorkspaceDiffService.cs   # 工作区差异对比
+│   ├── RomInfoService.cs         # ROM 信息聚合
+│   ├── RootService.cs            # ROOT 集成（Magisk 内置 / boot 替换）
+│   ├── HostsService.cs / DebloatSafetyService.cs / PreinstallService.cs
+│   ├── PackPreflightService.cs / PackVerifyService.cs   # 打包防呆 / 产物自检
+│   ├── RomWorkspace.cs / WorkspaceState.cs              # 工作区布局 / 会话状态
+│   └── AppSettings.cs / ZipSigner.cs                    # 设置持久化 / APK v1 签名
 ├── Assets/                       # 图标与启动资源
 ├── app.manifest                  # 应用清单
 └── Package.appxmanifest          # 打包清单（可选 MSIX 用）
 
 _selftest/
-├── Program.cs                    # 端到端回归自测（157 项断言：全闭环 + AOSP 规范字节位置断言）
+├── Program.cs                    # 端到端回归自测（159 项断言：全闭环 + AOSP 规范字节位置断言）
 └── SelfTest.csproj
 
 _realtest/
@@ -163,10 +174,21 @@ _realtest/
 ├── RealTest.csproj
 └── unsparse_head.py              # Python 独立 liblp 复核脚本
 
+_benchmark/
+├── Program.cs                    # 性能基准工程（prepare / measure / bench-write / analyze-payload）
+└── _benchmark.csproj
+
+Benchmarks/
+├── Memory.md                     # 内存基准（Ext4 提取 / Ramdisk 打包 / Ext4 写入，含剩余热点）
+├── Performance.md                # 耗时与回归记录
+└── TestData.md                   # 基准样本说明（约 5 GB，git 忽略不入库）
+
 docs/
 ├── PLAN.md                       # 下一步开发计划（分期与验收标准）
 └── formats/aosp-offsets.md       # AOSP 镜像格式关键偏移（含实测坑位记录）
 ```
+
+
 
 ## 开发指南
 
@@ -175,6 +197,10 @@ docs/
 - 版本历史见 [CHANGELOG.md](CHANGELOG.md)
 
 - 后续开发计划见 [docs/PLAN.md](docs/PLAN.md)；镜像格式偏移速查见 [docs/formats/aosp-offsets.md](docs/formats/aosp-offsets.md)
+
+- 性能基准与测量方法见 [Benchmarks/Memory.md](Benchmarks/Memory.md)；重跑用 `dotnet run --project _benchmark/_benchmark.csproj -c Release -- measure after`
+
+- 性能基准与测量方法见 [Benchmarks/Memory.md](Benchmarks/Memory.md)；重跑用 `dotnet run --project _benchmark/_benchmark.csproj -c Release -- measure after`
 
 - 安全问题反馈见 [SECURITY.md](SECURITY.md)
 
@@ -191,12 +217,18 @@ docs/
 | v0.7 | 多任务队列、AVB / dm-verity 处理 | ✅ 完成 |
 | v0.8 | payload.bin（OTA 增量包）解析与提取 | ✅ 完成 |
 | v1.0 | 镜像引擎规范符合性修复（boot v4 / vendor\_boot / sparse 大块）、真机样本验证台 | ✅ 完成 |
+| v1.1 | 正确性闭环（CI 接自测 / 打包容量治理 / 产物自检 / 发版）、.NET 10 升级、品牌双主题 | ✅ 完成 |
+| v1.2 | 性能治理（Ext4Reader / CreateCpio / inode 表流式化）+ 基准体系 + Engine/Application/Core 分层 | ✅ 完成 |
 
 > 初始 Roadmap 已全部完成。v1.0 重点是用真实厂商刷机包（小米 nezha HyperOS 3.0，19 个镜像、14.25 GiB super.img）验证并修复了镜像引擎的规范符合性缺陷。
+>
+> v1.1 补齐正确性闭环（CI 跑自测、容量治理、打包自检）并完成 .NET 10 / Windows App SDK 2.4 升级与品牌双主题 UI。v1.2 转向性能治理：核心路径全部流式化（Ext4 提取 500MB APK 峰值内存 1013MB → 3MB、Ramdisk 打包 1315MB → 147MB、inode 表 85MB → 55MB），建立可复跑的基准体系，并将 30 个服务拆为 Core / Engine / Application 三层。
+>
+> v1.1 补齐正确性闭环（CI 跑自测、容量治理、打包自检）并完成 .NET 10 / Windows App SDK 2.4 升级与品牌双主题 UI。v1.2 转向性能治理：核心路径全部流式化（Ext4 提取 500MB APK 峰值内存 1013MB → 3MB、Ramdisk 打包 1315MB → 147MB、inode 表 85MB → 55MB），建立可复跑的基准体系，并将 30 个服务拆为 Core / Engine / Application 三层。
 
 ## 质量保障
 
-- **端到端回归自测**（`_selftest/TestProj`，157 项断言全部通过）：用自身引擎从零构造完整 ROM 并走「解包 → 定制 → 打包 → 再解包」全闭环，其中 25 项按 AOSP `bootimg.h` / sparse / liblp 规范的**真实字节位置**断言（而非仅 Write→Parse 往返自洽）
+- **端到端回归自测**（`_selftest/SelfTest.csproj`，159 项断言全部通过）：用自身引擎从零构造完整 ROM 并走「解包 → 定制 → 打包 → 再解包」全闭环，其中 25 项按 AOSP `bootimg.h` / sparse / liblp 规范的**真实字节位置**断言（而非仅 Write→Parse 往返自洽）
 - **真机样本验证台**（`_realtest`）：独立工程，直接用厂商线刷包实测各镜像引擎——boot 类镜像做**字节级往返比对**（报告首个差异位置），sparse / super / ext4 / vbmeta 分别解析；并用 Python 独立实现交叉复核 liblp 元数据
 - **经验教训**：解析器测试不能只用自身引擎合成输入（会通过「自己写出的错误规范」），关键格式必须对照上游规范字节位置或第三方实现交叉验证
 

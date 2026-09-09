@@ -84,7 +84,7 @@ chunk 头 12 字节：`type(u16) + reserved(u16) + blocks(u32) + total_sz(u32)`
 ## 验证方式
 
 ```bash
-# 自测（157 项，其中 25 项为按本表字节位置的规范断言）
+# 自测（159 项，其中 25 项为按本表字节位置的规范断言）
 dotnet run --project _selftest
 
 # 真机样本：boot 类镜像做字节级往返比对，报告首个差异位置
