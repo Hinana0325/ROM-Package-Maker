@@ -1,4 +1,4 @@
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Application;
 
 /// <summary>
 /// 跨页面共享的会话状态（仅内存，不持久化）。

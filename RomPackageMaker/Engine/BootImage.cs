@@ -2,7 +2,8 @@ using System.Buffers.Binary;
 using System.IO.Compression;
 using System.Text;
 
-namespace RomPackageMaker.Services;
+using RomPackageMaker.Core;
+namespace RomPackageMaker.Engine;
 
 /// <summary>
 /// Android boot / vendor_boot 镜像的解包与重打包。

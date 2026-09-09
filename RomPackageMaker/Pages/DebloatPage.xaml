@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:RomPackageMaker.Pages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:services="using:RomPackageMaker.Services"
+    xmlns:services="using:RomPackageMaker.Application"
     mc:Ignorable="d">
 
     <Grid Padding="24,16,24,16" RowSpacing="12">

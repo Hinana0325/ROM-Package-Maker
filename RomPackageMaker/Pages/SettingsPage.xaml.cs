@@ -1,6 +1,6 @@
+using RomPackageMaker.Application;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using RomPackageMaker.Services;
 using Windows.Storage.Pickers;
 
 namespace RomPackageMaker.Pages;
@@ -49,7 +49,7 @@ public sealed partial class SettingsPage : Page
     {
         if (ThemeCombo.SelectedItem is not ComboBoxItem item) return;
         string tag = (string)item.Tag;
-        var app = (App)Application.Current;
+        var app = (App)Microsoft.UI.Xaml.Application.Current;
         app.ApplyTheme(tag);
     }
 

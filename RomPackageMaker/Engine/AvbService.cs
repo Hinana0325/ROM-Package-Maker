@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Engine;
 
 /// <summary>工作区内 vbmeta / AVB 页脚的检测结果。注意：属性不能使用 init（会破坏 XAML 类型信息生成）。</summary>
 public sealed class AvbEntry

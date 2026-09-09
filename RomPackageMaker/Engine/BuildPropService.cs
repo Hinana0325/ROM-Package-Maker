@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Engine;
 
 /// <summary>build.prop 中的一行：属性、注释或空行。</summary>
 public sealed class BuildPropLine

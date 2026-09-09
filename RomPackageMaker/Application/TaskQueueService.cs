@@ -1,7 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 
-namespace RomPackageMaker.Services;
+using RomPackageMaker.Core;
+namespace RomPackageMaker.Application;
 
 public enum TaskQueueKind
 {

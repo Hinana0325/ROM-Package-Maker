@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Application;
 
 /// <summary>
 /// hosts 广告过滤：在工作区 system/etc/hosts 中维护带标记的屏蔽块。

@@ -1,7 +1,8 @@
 using System.ComponentModel;
 using System.IO;
 
-namespace RomPackageMaker.Services;
+using RomPackageMaker.Engine;
+namespace RomPackageMaker.Application;
 
 /// <summary>工作目录中的预装应用（精简管理条目）。</summary>
 public sealed class WorkspaceApp : INotifyPropertyChanged

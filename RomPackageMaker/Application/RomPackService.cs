@@ -1,6 +1,8 @@
 using System.IO.Compression;
 
-namespace RomPackageMaker.Services;
+using RomPackageMaker.Core;
+using RomPackageMaker.Engine;
+namespace RomPackageMaker.Application;
 
 /// <summary>
 /// ROM 解包/打包核心服务。
@@ -697,8 +699,12 @@ public sealed class RomPackService : IRomPackService
         if (!info.IsVendorBoot && Directory.Exists(ramdiskDir) && Directory.EnumerateFileSystemEntries(ramdiskDir).Any())
         {
             progress.Report(new RomTaskProgress(60, "重新打包 ramdisk"));
-            byte[] cpio = CreateCpio(ramdiskDir);
-            info.Ramdisk = BootImage.CompressRamdiskGzip(cpio);
+            using var gzipMs = new MemoryStream();
+            using (var gz = new GZipStream(gzipMs, CompressionLevel.Optimal, leaveOpen: true))
+            {
+                WriteCpio(ramdiskDir, gz);
+            }
+            info.Ramdisk = gzipMs.ToArray();
             info.RamdiskSize = (uint)info.Ramdisk.Length;
         }
         else if (!info.IsVendorBoot && File.Exists(ramdiskCpioGz))
@@ -797,12 +803,12 @@ public sealed class RomPackService : IRomPackService
         }
     }
 
-    /// <summary>将目录打包为 cpio(newc) 归档。</summary>
-    private static byte[] CreateCpio(string rootDir)
-    {
-        using var ms = new MemoryStream();
-        var files = new List<(string RelPath, string FullPath, bool IsDir)>();
+    private static int Align4(int v) => (v + 3) & ~3;
 
+    /// <summary>Stream a directory into a cpio(newc) archive, writing directly to output (no MemoryStream).</summary>
+    private static void WriteCpio(string rootDir, Stream output)
+    {
+        var files = new List<(string RelPath, string FullPath, bool IsDir)>();
         foreach (var path in Directory.GetFileSystemEntries(rootDir, "*", SearchOption.AllDirectories))
         {
             string rel = Path.GetRelativePath(rootDir, path).Replace('\\', '/');
@@ -810,23 +816,15 @@ public sealed class RomPackService : IRomPackService
         }
         files.Insert(0, (".", rootDir, true));
 
+        long pos = 0;
         uint inode = 1;
+
         foreach (var (rel, full, isDir) in files)
         {
-            byte[] fileData = Array.Empty<byte>();
             uint mode = isDir ? 0x41EDu : 0x81A4u;
-            uint fileSize = 0;
-            if (!isDir)
-            {
-                fileData = File.ReadAllBytes(full);
-                fileSize = (uint)fileData.Length;
-            }
+            long fileSize = isDir ? 0 : new FileInfo(full).Length;
             uint nameSize = (uint)rel.Length + 1;
 
-            // 构造 header（newc 格式，110 字节）
-            // 字段顺序：c_magic[6] c_ino[8] c_mode[8] c_uid[8] c_gid[8] c_nlink[8]
-            //   c_mtime[8] c_filesize[8] c_devmajor[8] c_devminor[8] c_rdevmajor[8] c_rdevminor[8]
-            //   c_namesize[8] c_check[8]
             var sb = new System.Text.StringBuilder(110);
             sb.Append("070701");
             sb.AppendFormat("{0:X8}", inode++);
@@ -835,7 +833,7 @@ public sealed class RomPackService : IRomPackService
             sb.Append("00000000"); // gid
             sb.Append("00000001"); // nlink
             sb.Append("00000000"); // mtime
-            sb.AppendFormat("{0:X8}", fileSize);
+            sb.AppendFormat("{0:X8}", (uint)fileSize);
             sb.Append("00000000"); // devmajor
             sb.Append("00000000"); // devminor
             sb.Append("00000000"); // rdevmajor
@@ -843,16 +841,26 @@ public sealed class RomPackService : IRomPackService
             sb.AppendFormat("{0:X8}", nameSize);
             sb.Append("00000000"); // check
 
-            var headerBytes = System.Text.Encoding.ASCII.GetBytes(sb.ToString());
-            ms.Write(headerBytes, 0, headerBytes.Length);
-            var nameBytes = System.Text.Encoding.ASCII.GetBytes(rel + "\0");
-            ms.Write(nameBytes, 0, nameBytes.Length);
-            PadTo(ms, 4);
-            if (fileData.Length > 0)
+            byte[] headerBytes = System.Text.Encoding.ASCII.GetBytes(sb.ToString());
+            output.Write(headerBytes, 0, headerBytes.Length);
+            pos += headerBytes.Length;
+
+            byte[] nameBytes = System.Text.Encoding.ASCII.GetBytes(rel + "\0");
+            output.Write(nameBytes, 0, nameBytes.Length);
+            pos += nameBytes.Length;
+
+            int pad = (int)(4 - (pos % 4)) % 4;
+            if (pad > 0) { output.Write(new byte[pad], 0, pad); pos += pad; }
+
+            if (!isDir && fileSize > 0)
             {
-                ms.Write(fileData, 0, fileData.Length);
-                PadTo(ms, 4);
+                using var fs = new FileStream(full, FileMode.Open, FileAccess.Read, FileShare.Read);
+                fs.CopyTo(output);
+                pos += fileSize;
             }
+
+            pad = (int)(4 - (pos % 4)) % 4;
+            if (pad > 0) { output.Write(new byte[pad], 0, pad); pos += pad; }
         }
 
         // TRAILER
@@ -862,7 +870,7 @@ public sealed class RomPackService : IRomPackService
             "00000000" + // mode
             "00000000" + // uid
             "00000000" + // gid
-            "00000000" + // nlink
+            "00000001" + // nlink
             "00000000" + // mtime
             "00000000" + // filesize
             "00000000" + // devmajor
@@ -871,18 +879,18 @@ public sealed class RomPackService : IRomPackService
             "00000000" + // rdevminor
             "0000000B" + // namesize = 11
             "00000000");  // check
-        ms.Write(trailer, 0, trailer.Length);
-        ms.Write(System.Text.Encoding.ASCII.GetBytes("TRAILER!!!\0"), 0, 11);
-        PadTo(ms, 4);
-        // 末尾补齐到 512 字节倍数
-        while (ms.Length % 512 != 0) ms.WriteByte(0);
+        output.Write(trailer, 0, trailer.Length);
+        pos += trailer.Length;
 
-        return ms.ToArray();
-    }
+        byte[] trailerName = System.Text.Encoding.ASCII.GetBytes("TRAILER!!!\0");
+        output.Write(trailerName, 0, trailerName.Length);
+        pos += trailerName.Length;
 
-    private static int Align4(int v) => (v + 3) & ~3;
-    private static void PadTo(Stream s, int alignment)
-    {
-        while (s.Position % alignment != 0) s.WriteByte(0);
+        int pad4 = (int)(4 - (pos % 4)) % 4;
+        if (pad4 > 0) { output.Write(new byte[pad4], 0, pad4); pos += pad4; }
+
+        // Pad to 512-byte boundary (track pos internally; do not rely on output.Position)
+        int pad512 = (int)(512 - (pos % 512)) % 512;
+        if (pad512 > 0) { output.Write(new byte[pad512], 0, pad512); pos += pad512; }
     }
 }

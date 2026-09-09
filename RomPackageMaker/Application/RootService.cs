@@ -1,6 +1,6 @@
-﻿using System.IO;
+using System.IO;
 
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Application;
 
 /// <summary>ROOT 集成相关的应用模式。</summary>
 public static class RootModes

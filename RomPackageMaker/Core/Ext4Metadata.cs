@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Core;
 
 /// <summary>ext4 单个文件的元数据（解包时导出，打包时还原）。</summary>
 public sealed class Ext4FileMeta

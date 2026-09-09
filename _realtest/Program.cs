@@ -1,6 +1,5 @@
+using RomPackageMaker.Engine;
 using System.Text;
-using RomPackageMaker.Services;
-
 // 真机样本验证台：直接用 RomPackageMaker 服务层解析真实 ROM 镜像，
 // 重点验证规范符合性（boot 头字段 / AVB / super 元数据）与往返字节一致性。
 // 用法: RealTest <boot|avb|super|all> <路径>

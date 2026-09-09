@@ -1,4 +1,5 @@
-namespace RomPackageMaker.Services;
+using RomPackageMaker.Core;
+namespace RomPackageMaker.Engine;
 
 /// <summary>
 /// Android sparse 镜像格式（system.img 等分区镜像常见的存储格式）的解析与生成。

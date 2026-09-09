@@ -1,4 +1,4 @@
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Engine;
 
 /// <summary>build.prop 预设条目。</summary>
 public sealed class PropPresetItem

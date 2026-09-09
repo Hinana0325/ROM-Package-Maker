@@ -1,6 +1,8 @@
 using System.IO.Compression;
 
-namespace RomPackageMaker.Services;
+using RomPackageMaker.Core;
+using RomPackageMaker.Engine;
+namespace RomPackageMaker.Application;
 
 /// <summary>打包自检的单项结果。</summary>
 internal sealed record PackCheck(string Name, bool Ok, string Detail);

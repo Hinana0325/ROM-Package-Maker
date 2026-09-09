@@ -1,4 +1,4 @@
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Core;
 
 /// <summary>
 /// ROM 任务进度报告。

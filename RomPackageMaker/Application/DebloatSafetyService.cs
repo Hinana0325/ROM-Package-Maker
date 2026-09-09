@@ -1,4 +1,4 @@
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Application;
 
 /// <summary>预装应用删除风险等级。</summary>
 public enum DebloatRisk

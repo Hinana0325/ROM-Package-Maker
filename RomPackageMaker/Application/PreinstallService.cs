@@ -1,6 +1,6 @@
 using System.IO.Compression;
 
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Application;
 
 /// <summary>资源类型与目标路径映射。</summary>
 public enum ResourceKind

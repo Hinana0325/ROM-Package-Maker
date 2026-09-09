@@ -3,7 +3,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
-namespace RomPackageMaker.Services;
+using RomPackageMaker.Core;
+namespace RomPackageMaker.Engine;
 
 /// <summary>
 /// Android super 动态分区镜像（liblp 格式）的解析与重建。

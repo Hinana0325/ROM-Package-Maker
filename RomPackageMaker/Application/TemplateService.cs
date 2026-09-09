@@ -1,7 +1,8 @@
-﻿using System.IO;
+using System.IO;
 using System.Text.Json;
 
-namespace RomPackageMaker.Services;
+using RomPackageMaker.Engine;
+namespace RomPackageMaker.Application;
 
 /// <summary>ROM 定制模板：一次应用即可完成 build.prop 覆盖、预装精简与 ROOT 集成。</summary>
 public sealed class RomTemplate

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Application;
 
 /// <summary>
 /// 工作区清单，记录解包内容与原始结构，供打包阶段重建镜像。

@@ -6,7 +6,8 @@ using System.Text;
 using SharpCompress.Compressors.BZip2;
 using SharpCompress.Compressors.Xz;
 
-namespace RomPackageMaker.Services;
+using RomPackageMaker.Core;
+namespace RomPackageMaker.Engine;
 
 /// <summary>InstallOperation.Type（update_metadata.proto）。</summary>
 public enum PayloadOpType

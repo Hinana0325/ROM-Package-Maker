@@ -1,7 +1,7 @@
 using System.IO.Compression;
 using System.Text;
 
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Engine;
 
 /// <summary>APK AndroidManifest 解析结果。</summary>
 public sealed class ApkInfo

@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Application;
 
 /// <summary>
 /// 应用设置持久化。将设置存储在 %APPDATA%\RomPackageMaker\appsettings.json 中，

@@ -1,7 +1,8 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace RomPackageMaker.Services;
+using RomPackageMaker.Core;
+namespace RomPackageMaker.Engine;
 
 /// <summary>
 /// 从目录树构建 ext4 分区镜像。生成的镜像兼容 ext4（extent 布局），
@@ -359,80 +360,83 @@ internal sealed class Ext4Writer
         // 清零（sparse 流可能不需要，但内存流需要）
         output.Write(new byte[BlockSize]); // block 0 先占位，后面写 superblock
 
-        // 构建 inode 表内容
-        var inodeTables = new byte[groups][];
-        for (uint g = 0; g < groups; g++)
-        {
-            inodeTables[g] = new byte[InodeBlocksPerGroup * BlockSize];
-        }
-
+        // 构建 inode 表：按块组逐组填充并立即写入，消除全量驻留。
+        // 全量驻留 = groups × InodeBlocksPerGroup × BlockSize（8GB 分区约 128MB，且随分区大小线性增长）。
+        var inodesByGroup = new List<InodeEntry>[groups];
+        for (uint g = 0; g < groups; g++) inodesByGroup[g] = new List<InodeEntry>();
         foreach (var ino in inodes.Values)
         {
-            uint group = (ino.InodeNo - 1) / InodesPerGroup;
-            uint idx = (ino.InodeNo - 1) % InodesPerGroup;
-            if (group >= groups) continue;
-            int off = (int)(idx * InodeSize);
-            var table = inodeTables[group];
-
-            // 写 inode
-            BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x00, 2), ino.Mode); // mode
-            BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x02, 2), (ushort)(ino.Uid & 0xFFFF)); // uid_lo
-            BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x04, 4), (uint)(ino.Size & 0xFFFFFFFF)); // size_lo
-            BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x08, 4), ino.Atime); // atime
-            BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x0C, 4), ino.Ctime); // ctime
-            BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x10, 4), ino.Mtime); // mtime
-            BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x14, 4), 0); // dtime
-            BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x18, 2), (ushort)(ino.Gid & 0xFFFF)); // gid_lo
-            // links_count：目录 = 2 + 子目录数；其他 = 1
-            ushort links = ino.DirEntries != null
-                ? (ushort)(2 + ino.DirEntries.Values.Count(child => inodes.TryGetValue(child, out var c) && c.FileType == 2))
-                : (ushort)1;
-            BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x1A, 2), links); // links_count
-            // i_blocks: 512-byte 扇区数（数据块 + extent 树节点块 + xattr 块）
-            ulong blocks512 = (ulong)(ino.DataBlocks.Count + ino.ExtentNodeBlocks.Count) * (BlockSize / 512);
-            if (ino.XattrBlock is not null) blocks512 += BlockSize / 512;
-            if (blocks512 == 0 && ino.SlowSymlinkData is null && ino.FileType is not (3 or 4 or 5 or 6 or 7)) blocks512 = (ino.Size + 511) / 512;
-            BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x1C, 4), (uint)(blocks512 & 0xFFFFFFFF)); // blocks_lo
-            // flags：extent 树文件必须置 EXT4_EXTENTS_FL
-            uint flags = ino.RootExtentNode is null ? 0 : ExtentsFlag;
-            BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x20, 4), flags);
-            BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x64, 4), 0); // generation
-            BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x68, 4), ino.XattrBlock is { } xb ? (uint)xb : 0); // i_file_acl_lo
-            BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x6C, 4), (uint)(ino.Size >> 32)); // size_high
-            BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x70, 4), 0); // obso_faddr
-            BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x74, 2), (ushort)(blocks512 >> 32)); // blocks_high
-            BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x76, 2), 0); // file_acl_high
-            BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x78, 2), (ushort)(ino.Uid >> 16)); // uid_high
-            BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x7A, 2), (ushort)(ino.Gid >> 16)); // gid_high
-            BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x80, 4), 32); // i_extra_isize（无内联 xattr）
-
-            // i_block 区域
-            Span<byte> iblock = table.AsSpan(off + 0x28, 60);
-            if (ino.RootExtentNode is not null)
-            {
-                ino.RootExtentNode.CopyTo(iblock);
-            }
-            else if (ino.FileType == 7 && ino.SlowSymlinkData is null)
-            {
-                // 快速符号链接：目标存于 i_block
-                var target = Encoding.UTF8.GetBytes(ino.SymlinkTarget);
-                if (target.Length <= 60) target.CopyTo(iblock);
-            }
-            else if (ino.FileType is 3 or 4)
-            {
-                // 设备节点：i_block[0] = rdev
-                BinaryPrimitives.WriteUInt32LittleEndian(iblock, ino.Rdev);
-            }
+            uint grp = (ino.InodeNo - 1) / InodesPerGroup;
+            if (grp < groups) inodesByGroup[grp].Add(ino);
         }
 
-        // 写 inode 表到对应块组
         for (uint g = 0; g < groups; g++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            var table = new byte[InodeBlocksPerGroup * BlockSize];
+            foreach (var ino in inodesByGroup[g])
+            {
+                uint group = (ino.InodeNo - 1) / InodesPerGroup;
+                uint idx = (ino.InodeNo - 1) % InodesPerGroup;
+                if (group >= groups) continue;
+                int off = (int)(idx * InodeSize);
+
+                // 写 inode
+                BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x00, 2), ino.Mode); // mode
+                BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x02, 2), (ushort)(ino.Uid & 0xFFFF)); // uid_lo
+                BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x04, 4), (uint)(ino.Size & 0xFFFFFFFF)); // size_lo
+                BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x08, 4), ino.Atime); // atime
+                BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x0C, 4), ino.Ctime); // ctime
+                BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x10, 4), ino.Mtime); // mtime
+                BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x14, 4), 0); // dtime
+                BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x18, 2), (ushort)(ino.Gid & 0xFFFF)); // gid_lo
+                // links_count：目录 = 2 + 子目录数；其他 = 1
+                ushort links = ino.DirEntries != null
+                    ? (ushort)(2 + ino.DirEntries.Values.Count(child => inodes.TryGetValue(child, out var c) && c.FileType == 2))
+                    : (ushort)1;
+                BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x1A, 2), links); // links_count
+                // i_blocks: 512-byte 扇区数（数据块 + extent 树节点块 + xattr 块）
+                ulong blocks512 = (ulong)(ino.DataBlocks.Count + ino.ExtentNodeBlocks.Count) * (BlockSize / 512);
+                if (ino.XattrBlock is not null) blocks512 += BlockSize / 512;
+                if (blocks512 == 0 && ino.SlowSymlinkData is null && ino.FileType is not (3 or 4 or 5 or 6 or 7)) blocks512 = (ino.Size + 511) / 512;
+                BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x1C, 4), (uint)(blocks512 & 0xFFFFFFFF)); // blocks_lo
+                // flags：extent 树文件必须置 EXT4_EXTENTS_FL
+                uint flags = ino.RootExtentNode is null ? 0 : ExtentsFlag;
+                BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x20, 4), flags);
+                BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x64, 4), 0); // generation
+                BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x68, 4), ino.XattrBlock is { } xb ? (uint)xb : 0); // i_file_acl_lo
+                BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x6C, 4), (uint)(ino.Size >> 32)); // size_high
+                BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x70, 4), 0); // obso_faddr
+                BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x74, 2), (ushort)(blocks512 >> 32)); // blocks_high
+                BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x76, 2), 0); // file_acl_high
+                BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x78, 2), (ushort)(ino.Uid >> 16)); // uid_high
+                BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(off + 0x7A, 2), (ushort)(ino.Gid >> 16)); // gid_high
+                BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(off + 0x80, 4), 32); // i_extra_isize（无内联 xattr）
+
+                // i_block 区域
+                Span<byte> iblock = table.AsSpan(off + 0x28, 60);
+                if (ino.RootExtentNode is not null)
+                {
+                    ino.RootExtentNode.CopyTo(iblock);
+                }
+                else if (ino.FileType == 7 && ino.SlowSymlinkData is null)
+                {
+                    // 快速符号链接：目标存于 i_block
+                    var target = Encoding.UTF8.GetBytes(ino.SymlinkTarget);
+                    if (target.Length <= 60) target.CopyTo(iblock);
+                }
+                else if (ino.FileType is 3 or 4)
+                {
+                    // 设备节点：i_block[0] = rdev
+                    BinaryPrimitives.WriteUInt32LittleEndian(iblock, ino.Rdev);
+                }
+            }
+
+            // 写该组 inode 表到对应块组
             ulong inodeTableStart = g == 0 ? 4u : (ulong)g * BlocksPerGroup + 2u;
             output.Position = (long)inodeTableStart * BlockSize;
-            output.Write(inodeTables[g]);
+            output.Write(table);
         }
-
         // 写数据块 —— 先写根目录（根目录不在 fileList 中）
         {
             var dirData = BuildDirData(root, inodes);

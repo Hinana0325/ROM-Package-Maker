@@ -4,20 +4,20 @@ using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Application;
 
 /// <summary>
-/// Android 刷机包（zip）签名，使用 APK v1（JAR）签名方案。
-/// 默认在运行时生成自签名测试证书；也可通过设置页配置外部私钥（.pfx 或 .pk8 + .x509.pem）。
-/// 注意：JAR 规范要求 CERT.SF 中各段摘要与 MANIFEST.MF 的实际字节一致，
-/// 因此所有文本统一使用 LF 行尾，摘要直接基于生成的字节计算。
+/// Android 閸掗攱婧€閸栧拑绱檢ip閿涘顒烽崥宥忕礉娴ｈ法鏁?APK v1閿涘湞AR閿涘顒烽崥宥嗘煙濡楀牄鈧?
+/// 姒涙顓婚崷銊ㄧ箥鐞涘本妞傞悽鐔稿灇閼奉亞顒烽崥宥嗙ゴ鐠囨洝鐦夋稊锔肩幢娑旂喎褰查柅姘崇箖鐠佸墽鐤嗘い鐢稿帳缂冾喖顦婚柈銊ь潌闁姐儻绱?pfx 閹?.pk8 + .x509.pem閿涘鈧?
+/// 濞夈劍鍓伴敍娆紸R 鐟欏嫯瀵栫憰浣圭湴 CERT.SF 娑擃厼鎮囧▓鍨喅鐟曚椒绗?MANIFEST.MF 閻ㄥ嫬鐤勯梽鍛摟閼哄倷绔撮懛杈剧礉
+/// 閸ョ姵顒濋幍鈧張澶嬫瀮閺堫剛绮烘稉鈧担璺ㄦ暏 LF 鐞涘苯鐔敍灞炬喅鐟曚胶娲块幒銉ョ唨娴滃海鏁撻幋鎰畱鐎涙濡拋锛勭暬閵?
 /// </summary>
 internal static class ZipSigner
 {
     private const string Lf = "\n";
 
-    /// <summary>对已有 zip 进行签名，输出到目标路径（可为同一路径覆盖）。
-    /// 未显式传入证书时，优先使用设置页配置的外部密钥，否则生成测试证书。</summary>
+    /// <summary>鐎电懓鍑￠張?zip 鏉╂稖顢戠粵鎯ф倳閿涘矁绶崙鍝勫煂閻╊喗鐖ｇ捄顖氱窞閿涘牆褰叉稉鍝勬倱娑撯偓鐠侯垰绶炵憰鍡欐磰閿涘鈧?
+    /// 閺堫亝妯夊蹇庣炊閸忋儴鐦夋稊锔芥閿涘奔绱崗鍫滃▏閻劏顔曠純顕€銆夐柊宥囩枂閻ㄥ嫬顦婚柈銊ョ槕闁姐儻绱濋崥锕€鍨悽鐔稿灇濞村鐦拠浣峰姛閵?/summary>
     public static void SignZip(string inputZip, string outputZip, X509Certificate2? cert = null, AsymmetricAlgorithm? privateKey = null)
     {
         if (cert == null)
@@ -35,11 +35,11 @@ internal static class ZipSigner
             }
         }
 
-        // 直接在文件流上读取（3GB 级刷机包不能整体读入内存）
+        // 閻╁瓨甯撮崷銊︽瀮娴犺埖绁︽稉濠咁嚢閸欐牭绱?GB 缁狙冨煕閺堝搫瀵樻稉宥堝厴閺佺繝缍嬬拠璇插弳閸愬懎鐡ㄩ敍?
         using var inFs = new FileStream(inputZip, FileMode.Open, FileAccess.Read, FileShare.Read);
         using var archive = new ZipArchive(inFs, ZipArchiveMode.Read, leaveOpen: true);
 
-        // 计算所有条目的摘要
+        // 鐠侊紕鐣婚幍鈧張澶嬫蒋閻╊喚娈戦幗妯款洣
         var manifestEntries = new List<(string Name, string Hash)>();
         using (var sha256 = SHA256.Create())
         {
@@ -51,7 +51,7 @@ internal static class ZipSigner
             }
         }
 
-        // 构建 MANIFEST.MF（LF 行尾）
+        // 閺嬪嫬缂?MANIFEST.MF閿涘湢F 鐞涘苯鐔敍?
         var manifest = new StringBuilder();
         AppendLf(manifest, "Manifest-Version: 1.0");
         AppendLf(manifest, "Created-By: RomPackageMaker");
@@ -62,14 +62,14 @@ internal static class ZipSigner
             var section = new StringBuilder();
             AppendLf(section, $"Name: {name}");
             AppendLf(section, $"SHA-256-Digest: {hash}");
-            // 段落字节 = 两行属性 + 结尾空行（与 MANIFEST.MF 内完全一致）
+            // 濞堜絻鎯ょ€涙濡?= 娑撱倛顢戠仦鐐粹偓?+ 缂佹挸鐔粚楦款攽閿涘牅绗?MANIFEST.MF 閸愬懎鐣崗銊ょ閼疯揪绱?
             byte[] sectionBytes = Encoding.UTF8.GetBytes(section.ToString() + Lf);
             sections.Add((name, sectionBytes));
             manifest.Append(section).Append(Lf);
         }
         byte[] manifestBytes = Encoding.UTF8.GetBytes(manifest.ToString());
 
-        // 构建 CERT.SF：主段 + 每个条目段的摘要（与 MANIFEST.MF 字节精确对应）
+        // 閺嬪嫬缂?CERT.SF閿涙矮瀵屽▓?+ 濮ｅ繋閲滈弶锛勬窗濞堢數娈戦幗妯款洣閿涘牅绗?MANIFEST.MF 鐎涙濡划鍓р€樼€电懓绨查敍?
         var sf = new StringBuilder();
         AppendLf(sf, "Signature-Version: 1.0");
         AppendLf(sf, "Created-By: RomPackageMaker");
@@ -91,10 +91,10 @@ internal static class ZipSigner
         }
         byte[] sfBytes = Encoding.UTF8.GetBytes(sf.ToString());
 
-        // 签名 CERT.SF -> CERT.RSA (PKCS#7)
+        // 缁涙儳鎮?CERT.SF -> CERT.RSA (PKCS#7)
         byte[] certRsa = SignDataPkcs7(sfBytes, cert, privateKey!);
 
-        // 写入输出 zip：先复制原有条目，再追加 META-INF 文件
+        // 閸愭瑥鍙嗘潏鎾冲毉 zip閿涙艾鍘涙径宥呭煑閸樼喐婀侀弶锛勬窗閿涘苯鍟€鏉╄棄濮?META-INF 閺傚洣娆?
         using (var outFs = File.Create(outputZip))
         {
             using var outArchive = new ZipArchive(outFs, ZipArchiveMode.Create, leaveOpen: false);
@@ -135,7 +135,7 @@ internal static class ZipSigner
         return signedCms.Encode();
     }
 
-    /// <summary>从设置读取外部签名私钥（.pfx/.p12，或 .pk8 + .x509.pem）。不可用时返回 null。</summary>
+    /// <summary>娴犲氦顔曠純顔款嚢閸欐牕顦婚柈銊ь劮閸氬秶顫嗛柦銉礄.pfx/.p12閿涘本鍨?.pk8 + .x509.pem閿涘鈧倷绗夐崣顖滄暏閺冩儼绻戦崶?null閵?/summary>
     private static (X509Certificate2 Cert, AsymmetricAlgorithm Key)? TryLoadExternalSigner()
     {
         var settings = AppSettings.Current;
@@ -147,7 +147,7 @@ internal static class ZipSigner
             string ext = Path.GetExtension(keyPath).ToLowerInvariant();
             if (ext == ".pfx" || ext == ".p12")
             {
-                var cert = new X509Certificate2(keyPath, (string?)null,
+                var cert = X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(keyPath), (string?)null,
                     X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
                 if (cert.GetRSAPrivateKey() is RSA rsa) return (cert, rsa);
                 if (cert.GetECDsaPrivateKey() is ECDsa ec) return (cert, ec);
@@ -167,7 +167,7 @@ internal static class ZipSigner
         }
         catch
         {
-            // 外部密钥加载失败时回退到内置测试证书
+            // 婢舵牠鍎寸€靛棝鎸滈崝鐘烘祰婢惰精瑙﹂弮璺烘礀闁偓閸掓澘鍞寸純顔界ゴ鐠囨洝鐦夋稊?
             return null;
         }
         return null;
@@ -196,7 +196,7 @@ internal static class ZipSigner
         }
     }
 
-    /// <summary>读取 PEM（"-----BEGIN PRIVATE KEY-----"）或 DER 格式的 PKCS#8 私钥。</summary>
+    /// <summary>鐠囪褰?PEM閿?-----BEGIN PRIVATE KEY-----"閿涘鍨?DER 閺嶇厧绱￠惃?PKCS#8 缁変線鎸滈妴?/summary>
     private static byte[] ReadPemOrDer(string path)
     {
         string text = File.ReadAllText(path).Trim();
@@ -212,7 +212,7 @@ internal static class ZipSigner
         return File.ReadAllBytes(path);
     }
 
-    /// <summary>生成自签名测试证书（2048-bit RSA，SHA256，10 年有效期）。</summary>
+    /// <summary>閻㈢喐鍨氶懛顏嗩劮閸氬秵绁寸拠鏇＄槈娑旓讣绱?048-bit RSA閿涘HA256閿?0 楠炲瓨婀侀弫鍫熸埂閿涘鈧?/summary>
     public static X509Certificate2 GenerateTestCertificate(out RSA privateKey)
     {
         privateKey = RSA.Create(2048);
@@ -226,8 +226,8 @@ internal static class ZipSigner
             DateTimeOffset.UtcNow.AddDays(-1),
             DateTimeOffset.UtcNow.AddYears(10));
 
-        // 导出为带私钥的 PFX 再重新导入，确保私钥可用于签名
+        // 鐎电厧鍤稉鍝勭敨缁変線鎸滈惃?PFX 閸愬秹鍣搁弬鏉款嚤閸忋儻绱濈涵顔荤箽缁変線鎸滈崣顖滄暏娴滃海顒烽崥?
         var pfx = cert.Export(X509ContentType.Pfx, "rommaker");
-        return new X509Certificate2(pfx, "rommaker", X509KeyStorageFlags.Exportable);
+        return X509CertificateLoader.LoadPkcs12(pfx, "rommaker", X509KeyStorageFlags.Exportable);
     }
 }

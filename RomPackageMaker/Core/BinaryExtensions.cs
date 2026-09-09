@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace RomPackageMaker.Services;
+namespace RomPackageMaker.Core;
 
 /// <summary>
 /// 针对 Android 镜像（小端序）的二进制读取扩展方法。

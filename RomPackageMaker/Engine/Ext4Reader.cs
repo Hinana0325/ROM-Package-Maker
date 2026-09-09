@@ -1,7 +1,8 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace RomPackageMaker.Services;
+using RomPackageMaker.Core;
+namespace RomPackageMaker.Engine;
 
 /// <summary>
 /// ext2/ext3/ext4 文件系统只读解析器，用于从分区镜像中提取文件。
@@ -352,6 +353,88 @@ internal sealed class Ext4Reader : IDisposable
         return arr;
     }
 
+    /// <summary>将文件数据直接写入输出流（零额外拷贝，用于大文件提取）。</summary>
+    private void WriteFileData(InodeInfo inode, Stream output)
+    {
+        if (inode.Size == 0) return;
+        if ((FeatureIncompat & INCOMPAT_ENCRYPT) != 0 && (inode.Flags & 0x800) != 0)
+            throw new NotSupportedException("不支持读取加密文件。");
+        uint magic = BinaryPrimitives.ReadUInt16LittleEndian(inode.Block.AsSpan(0, 2));
+        if (magic == ExtentMagic)
+            WalkExtentTree(inode.Block, output);
+        else
+            WalkIndirectData(inode, output);
+        if (output.Position > (long)inode.Size)
+            output.SetLength((long)inode.Size);
+    }
+
+    /// <summary>间接块布局：收集块号后顺序写入输出流（不经过 MemoryStream）。</summary>
+    private void WalkIndirectData(InodeInfo inode, Stream output)
+    {
+        var blocks = new List<ulong>();
+        for (int i = 0; i < 12; i++)
+        {
+            uint b = BinaryPrimitives.ReadUInt32LittleEndian(inode.Block.AsSpan(i * 4, 4));
+            if (b != 0) blocks.Add(b);
+        }
+        uint indirect1 = BinaryPrimitives.ReadUInt32LittleEndian(inode.Block.AsSpan(48, 4));
+        if (indirect1 != 0)
+        {
+            byte[] data = ReadBlock(indirect1);
+            int entries = (int)(BlockSize / 4);
+            for (int i = 0; i < entries; i++)
+            {
+                uint b = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(i * 4, 4));
+                if (b != 0) blocks.Add(b);
+            }
+        }
+        uint indirect2 = BinaryPrimitives.ReadUInt32LittleEndian(inode.Block.AsSpan(52, 4));
+        if (indirect2 != 0)
+        {
+            byte[] l1 = ReadBlock(indirect2);
+            int entries = (int)(BlockSize / 4);
+            for (int i = 0; i < entries; i++)
+            {
+                uint b1 = BinaryPrimitives.ReadUInt32LittleEndian(l1.AsSpan(i * 4, 4));
+                if (b1 == 0) continue;
+                byte[] l2 = ReadBlock(b1);
+                for (int j = 0; j < entries; j++)
+                {
+                    uint b2 = BinaryPrimitives.ReadUInt32LittleEndian(l2.AsSpan(j * 4, 4));
+                    if (b2 != 0) blocks.Add(b2);
+                }
+            }
+        }
+        uint indirect3 = BinaryPrimitives.ReadUInt32LittleEndian(inode.Block.AsSpan(56, 4));
+        if (indirect3 != 0)
+        {
+            byte[] l1 = ReadBlock(indirect3);
+            int entries = (int)(BlockSize / 4);
+            for (int i = 0; i < entries; i++)
+            {
+                uint b1 = BinaryPrimitives.ReadUInt32LittleEndian(l1.AsSpan(i * 4, 4));
+                if (b1 == 0) continue;
+                byte[] l2 = ReadBlock(b1);
+                for (int j = 0; j < entries; j++)
+                {
+                    uint b2 = BinaryPrimitives.ReadUInt32LittleEndian(l2.AsSpan(j * 4, 4));
+                    if (b2 == 0) continue;
+                    byte[] l3 = ReadBlock(b2);
+                    for (int k = 0; k < entries; k++)
+                    {
+                        uint b3 = BinaryPrimitives.ReadUInt32LittleEndian(l3.AsSpan(k * 4, 4));
+                        if (b3 != 0) blocks.Add(b3);
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < blocks.Count; i++)
+        {
+            _stream.Position = BlockOffset(blocks[i]);
+            _stream.CopyExact(output, BlockSize);
+        }
+    }
+
     /// <summary>解析符号链接目标。</summary>
     private string ReadSymlink(InodeInfo inode)
     {
@@ -602,9 +685,11 @@ internal sealed class Ext4Reader : IDisposable
                 }
                 else if (IsRegularFile(inode))
                 {
-                    var data = ReadFileData(inode);
-                    File.WriteAllBytes(path, data);
-                    processed += data.Length;
+                    using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        WriteFileData(inode, fs);
+                        processed += fs.Length;
+                    }
                     if (progress != null && totalEstimate > 0)
                     {
                         int pct = (int)Math.Min(99, processed * 100 / totalEstimate);

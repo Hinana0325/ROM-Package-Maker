@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <Page
     x:Class="RomPackageMaker.Pages.TaskQueuePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -6,117 +6,102 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:RomPackageMaker.Pages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:services="using:RomPackageMaker.Services"
+    xmlns:services="using:RomPackageMaker.Application"
     mc:Ignorable="d">
 
-    <Grid Padding="24,16,24,16" RowSpacing="12">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+    <Grid Padding="24,16,24,16" ColumnSpacing="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="400" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-        <StackPanel Spacing="4">
-            <TextBlock Style="{StaticResource PageHeaderTextBlockStyle}" Text="任务队列" />
-            <TextBlock
-                Style="{StaticResource PageDescriptionTextBlockStyle}"
-                Text="解包 / 打包任务按加入顺序依次执行（同一时间仅运行一个，避免磁盘争用）。" />
+        <!-- ===== 左侧：添加入队表单 ===== -->
+        <StackPanel Spacing="16">
+            <StackPanel Spacing="4">
+                <TextBlock Style="{StaticResource PageHeaderTextBlockStyle}" Text="任务队列" />
+                <TextBlock
+                    Style="{StaticResource PageDescriptionTextBlockStyle}"
+                    Text="解包/打包任务按加入顺序依次执行（同一时间仅运行一个，避免磁盘争用）。" />
+            </StackPanel>
+
+            <!-- 新建解包任务 -->
+            <Border Padding="12,10" Background="{ThemeResource CardBackgroundBrush}" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+                <StackPanel Spacing="8">
+                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" Text="新建解包任务" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="UnpackSourceBox" Header="ROM 文件（zip / img）" IsReadOnly="True" PlaceholderText="选择 ROM 文件" />
+                        <Button Grid.Column="1" VerticalAlignment="Bottom" Click="BrowseUnpackSource_Click" Content="浏览..." />
+                    </Grid>
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="UnpackWsBox" Header="工作目录（输出）" IsReadOnly="True" PlaceholderText="选择输出目录" />
+                        <Button Grid.Column="1" VerticalAlignment="Bottom" Click="BrowseUnpackWs_Click" Content="浏览..." />
+                    </Grid>
+                    <Button HorizontalAlignment="Stretch" Click="AddUnpackButton_Click" Content="加入解包任务" Style="{StaticResource PrimaryActionButtonStyle}" />
+                </StackPanel>
+            </Border>
+
+            <!-- 新建打包任务 -->
+            <Border Padding="12,10" Background="{ThemeResource CardBackgroundBrush}" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+                <StackPanel Spacing="8">
+                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" Text="新建打包任务" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="PackWsBox" Header="工作目录" IsReadOnly="True" PlaceholderText="选择工作目录" />
+                        <Button Grid.Column="1" VerticalAlignment="Bottom" Click="BrowsePackWs_Click" Content="浏览..." />
+                    </Grid>
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="PackOutBox" Header="输出 zip" IsReadOnly="True" PlaceholderText="选择输出文件" />
+                        <Button Grid.Column="1" VerticalAlignment="Bottom" Click="BrowsePackOut_Click" Content="浏览..." />
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <CheckBox x:Name="SignCheck" VerticalAlignment="Center" Content="签名" IsChecked="True" />
+                    </StackPanel>
+                    <Button HorizontalAlignment="Stretch" Click="AddPackButton_Click" Content="加入打包任务" Style="{StaticResource AccentButtonStyle}" />
+                </StackPanel>
+            </Border>
+
+            <!-- 队列工具栏 -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Click="ClearFinishedButton_Click" Content="移除已结束" />
+                <TextBlock
+                    x:Name="StatsText"
+                    VerticalAlignment="Center"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="队列为空。" />
+            </StackPanel>
         </StackPanel>
 
-        <!-- 新建解包任务 -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
-            <TextBox
-                x:Name="UnpackSourceBox"
-                Width="300"
-                Header="解包：ROM 文件（zip / img）"
-                IsReadOnly="True"
-                PlaceholderText="选择 ROM 文件" />
-            <Button
-                VerticalAlignment="Bottom"
-                Click="BrowseUnpackSource_Click"
-                Content="浏览..." />
-            <TextBox
-                x:Name="UnpackWsBox"
-                Width="300"
-                Header="解包：工作目录"
-                IsReadOnly="True"
-                PlaceholderText="选择输出目录" />
-            <Button
-                VerticalAlignment="Bottom"
-                Click="BrowseUnpackWs_Click"
-                Content="浏览..." />
-            <Button
-                VerticalAlignment="Bottom"
-                Click="AddUnpackButton_Click"
-                Content="加入队列"
-                Style="{StaticResource PrimaryActionButtonStyle}" />
-        </StackPanel>
-
-        <!-- 新建打包任务 -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
-            <TextBox
-                x:Name="PackWsBox"
-                Width="300"
-                Header="打包：工作目录"
-                IsReadOnly="True"
-                PlaceholderText="选择工作目录" />
-            <Button
-                VerticalAlignment="Bottom"
-                Click="BrowsePackWs_Click"
-                Content="浏览..." />
-            <TextBox
-                x:Name="PackOutBox"
-                Width="300"
-                Header="打包：输出 zip"
-                IsReadOnly="True"
-                PlaceholderText="选择输出文件" />
-            <Button
-                VerticalAlignment="Bottom"
-                Click="BrowsePackOut_Click"
-                Content="浏览..." />
-            <CheckBox
-                x:Name="SignCheck"
-                Margin="0,0,0,4"
-                VerticalAlignment="Bottom"
-                Content="签名"
-                IsChecked="True" />
-            <Button
-                VerticalAlignment="Bottom"
-                Click="AddPackButton_Click"
-                Content="加入队列"
-                Style="{StaticResource AccentButtonStyle}" />
-        </StackPanel>
-
-        <!-- 队列工具栏 -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="12">
-            <Button Click="ClearFinishedButton_Click" Content="移除已结束" />
-            <TextBlock
-                x:Name="StatsText"
-                VerticalAlignment="Center"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Style="{StaticResource CaptionTextBlockStyle}"
-                Text="队列为空。任务按加入顺序依次执行（同一时间仅运行一个）。" />
-        </StackPanel>
-
-        <!-- 队列列表 -->
+        <!-- ===== 右侧：队列列表 ===== -->
         <Border
-            Grid.Row="4"
+            Grid.Column="1"
             Padding="0"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
             BorderThickness="1"
-            CornerRadius="8">
+            CornerRadius="12">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <ListView
-                    x:Name="ItemsList"
-                    SelectionMode="None">
+                <ListView x:Name="ItemsList" SelectionMode="None">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -126,11 +111,7 @@
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="services:TaskQueueItem">
-                            <Grid
-                                Padding="12,6,12,6"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="0,0,0,1"
-                                ColumnSpacing="12">
+                            <Grid Padding="12,8,12,8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" ColumnSpacing="12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
@@ -138,66 +119,25 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <FontIcon
-                                    VerticalAlignment="Center"
-                                    FontSize="16"
-                                    Glyph="{x:Bind KindGlyph}" />
+                                <FontIcon VerticalAlignment="Center" FontSize="16" Glyph="{x:Bind KindGlyph}" />
 
-                                <StackPanel
-                                    Grid.Column="1"
-                                    VerticalAlignment="Center"
-                                    Spacing="2">
-                                    <TextBlock
-                                        FontWeight="SemiBold"
-                                        Text="{x:Bind DisplayName}"
-                                        TextTrimming="CharacterEllipsis" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock FontWeight="SemiBold" Text="{x:Bind DisplayName}" TextTrimming="CharacterEllipsis" />
                                     <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock
-                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                            Style="{StaticResource CaptionTextBlockStyle}"
-                                            Text="{x:Bind StatusText, Mode=OneWay}" />
-                                        <TextBlock
-                                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                            Style="{StaticResource CaptionTextBlockStyle}"
-                                            Text="{x:Bind Stage, Mode=OneWay}"
-                                            TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind StatusText, Mode=OneWay}" />
+                                        <TextBlock Foreground="{ThemeResource TextFillColorTertiaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind Stage, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
-                                    <TextBlock
-                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
-                                        Text="{x:Bind Error, Mode=OneWay}"
-                                        TextWrapping="Wrap"
-                                        Visibility="{x:Bind HasError, Mode=OneWay}" />
+                                    <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind Error, Mode=OneWay}" TextWrapping="Wrap" Visibility="{x:Bind HasError, Mode=OneWay}" />
                                 </StackPanel>
 
-                                <StackPanel
-                                    Grid.Column="2"
-                                    VerticalAlignment="Center"
-                                    Spacing="4">
-                                    <ProgressBar
-                                        MaxHeight="6"
-                                        Maximum="100"
-                                        Value="{x:Bind Percent, Mode=OneWay}" />
-                                    <TextBlock
-                                        HorizontalAlignment="Right"
-                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
-                                        Text="{x:Bind PercentText, Mode=OneWay}" />
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="4">
+                                    <ProgressBar MaxHeight="6" Maximum="100" Value="{x:Bind Percent, Mode=OneWay}" />
+                                    <TextBlock HorizontalAlignment="Right" Foreground="{ThemeResource TextFillColorTertiaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind PercentText, Mode=OneWay}" />
                                 </StackPanel>
 
-                                <StackPanel
-                                    Grid.Column="3"
-                                    VerticalAlignment="Center"
-                                    Orientation="Horizontal"
-                                    Spacing="4">
-                                    <Button
-                                        Click="CancelRow_Click"
-                                        Content="取消"
-                                        Visibility="{x:Bind CanCancel, Mode=OneWay}" />
-                                    <Button
-                                        Click="RemoveRow_Click"
-                                        Content="移除"
-                                        Visibility="{x:Bind CanRemove, Mode=OneWay}" />
+                                <StackPanel Grid.Column="3" VerticalAlignment="Center" Orientation="Horizontal" Spacing="4">
+                                    <Button Click="CancelRow_Click" Content="取消" Visibility="{x:Bind CanCancel, Mode=OneWay}" />
+                                    <Button Click="RemoveRow_Click" Content="移除" Visibility="{x:Bind CanRemove, Mode=OneWay}" />
                                 </StackPanel>
                             </Grid>
                         </DataTemplate>
@@ -210,7 +150,7 @@
                     Margin="12"
                     HorizontalAlignment="Center"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="队列为空。在上方加入解包 / 打包任务。"
+                    Text="队列为空。在左侧加入解包 / 打包任务。"
                     Visibility="Collapsed" />
             </Grid>
         </Border>

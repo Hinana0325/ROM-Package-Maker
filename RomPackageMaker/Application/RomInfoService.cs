@@ -1,6 +1,7 @@
 using System.IO;
 
-namespace RomPackageMaker.Services;
+using RomPackageMaker.Engine;
+namespace RomPackageMaker.Application;
 
 /// <summary>信息总览中的一条系统属性。注意：属性不能使用 init（会破坏 XAML 类型信息生成）。</summary>
 public sealed class RomInfoProp
