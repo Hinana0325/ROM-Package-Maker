@@ -85,3 +85,8 @@ _realtest/bin/
 _realtest/obj/
 _selftest/bin/
 _selftest/obj/
+_benchmark/bin/
+_benchmark/obj/
+
+# ===== 基准样本（约 900MB，不入库）=====
+Benchmarks/data/
